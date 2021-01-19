@@ -1,30 +1,20 @@
 # Python Annotator for VideoS
-PAVS - A simple video labeling tool developed in PyQt5 for managing the dataset of the ASDetect Project
-
-Annotate videos in common formats(mp4, avi, mkv, wav, mp3)
-
-You can easily annotate video files per frame or in groups and label the video files either based on their category or create a custom label.
-In the example below we have annotated an mp4 file. You can see the video player and the data after annotating the particular frames. This data table can be exported and imported into a CSV File.
-Refer help.txt before proceeding with the usage of the application.
-
 
 ## Installation
  * Windows
   ```
      pip install numpy
      pip install PyQt5
+     Run Required software for Windows/K-Lite_Codec_Pack_1532_Basic.exe file to support video
 
 ```
-Run Required software for Windows/K-Lite_Codec_Pack_1532_Basic.exe to support video
+
 
 * Linux/Ubuntu
   ```
      pip install numpy
      sudo apt-get install python3-pyqt5
-
 ```
-
-
 
 ## Usage
    * Running the annotator
