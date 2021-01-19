@@ -9,10 +9,21 @@ Refer help.txt before proceeding with the usage of the application.
 
 
 ## Installation
+ * Windows
   ```
-     pip install -r requirements.txt
+     pip install numpy
+     pip install PyQt5
 
 ```
+Run Required software for Windows/K-Lite_Codec_Pack_1532_Basic.exe to support video
+
+* Linux/Ubuntu
+  ```
+     pip install numpy
+     sudo apt-get install python3-pyqt5
+
+```
+
 
 
 ## Usage
