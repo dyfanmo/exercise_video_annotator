@@ -1,13 +1,14 @@
 # Python Annotator for VideoS
 
 ## Installation
- * Windows
+ ### Windows
  Run [Required software for Windows/K-Lite_Codec_Pack_1532_Basic.exe](https://github.com/dyfanmo/exercise_video_annotator/blob/main/Required%20software%20for%20Windows/K-Lite_Codec_Pack_1532_Basic.exe) file to support video
   ```
      pip install numpy
      pip install PyQt5
     
 ```
+
 
  * Linux/Ubuntu
   ```
