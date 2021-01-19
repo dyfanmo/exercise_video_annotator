@@ -7,7 +7,6 @@ You can easily annotate video files per frame or in groups and label the video f
 In the example below we have annotated an mp4 file. You can see the video player and the data after annotating the particular frames. This data table can be exported and imported into a CSV File.
 Refer help.txt before proceeding with the usage of the application.
 
-![example](https://raw.githubusercontent.com/kevalvc/Python-Annotator-for-VideoS/master/Examples/example.PNG)
 
 ## Installation
  * Dependencies
@@ -25,7 +24,8 @@ Refer help.txt before proceeding with the usage of the application.
 ## Usage
    * Running the annotator
  ```
-     python pavs.py
+     python pavs.py --classes_label_path config/classes.txt 
+
 ```
 
 ## Shortcuts
