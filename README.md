@@ -9,17 +9,11 @@ Refer help.txt before proceeding with the usage of the application.
 
 
 ## Installation
- * Dependencies
+  ```
+     pip install -r requirements.txt
 
-   * python-pyqt5
-   * python-pyqt5.Qtmultimedia
-   * python-pyqt5.QtMultimediaWidgets
-   * python-pyqt5.QtCore
-   * python-pyqt5.QtGui
-   * os
-   * csv
-   * sys
-   * python-numpy
+```
+
 
 ## Usage
    * Running the annotator
