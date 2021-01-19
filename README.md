@@ -5,7 +5,7 @@
   ```
      pip install numpy
      pip install PyQt5
-     Run Required software for Windows/K-Lite_Codec_Pack_1532_Basic.exe file to support video
+     Run https://github.com/dyfanmo/exercise_video_annotator/blob/main/Required%20software%20for%20Windows/K-Lite_Codec_Pack_1532_Basic.exe file to support video
 
 ```
 
