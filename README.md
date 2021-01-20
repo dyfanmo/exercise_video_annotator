@@ -31,3 +31,4 @@ Refer help.txt before proceeding with the usage of the application.
 - Frame after next 10 frames: Shift + Left Arrow
 - Frame before prev 10 frames: Shift + Right Arrow
 - Clear entire table: C
+

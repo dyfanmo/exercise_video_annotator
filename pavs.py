@@ -103,8 +103,11 @@ class Window(QMainWindow):
         self.endTime = QLineEdit()
         self.endTime.setPlaceholderText("Select End Time")
 
-        self.repCount = QLineEdit()
-        self.repCount.setPlaceholderText("Rep Count")
+        self.minReps = QLineEdit()
+        self.minReps.setPlaceholderText("Min Reps")
+
+        self.maxReps = QLineEdit()
+        self.maxReps.setPlaceholderText("Max Reps")
 
         self.iLabel = QComboBox(self)
         classes_file = open(args.classes_label_path, 'r')
@@ -161,7 +164,9 @@ class Window(QMainWindow):
         inputFields.addWidget(self.startTime, 1)
         inputFields.addWidget(self.endTime, 1)
         inputFields.addWidget(self.iLabel, 1)
-        inputFields.addWidget(self.repCount, 0)
+        inputFields.addWidget(self.minReps, 0)
+        inputFields.addWidget(self.maxReps, 0)
+
         # inputFields.addWidget(self.ctr)
 
         feats = QHBoxLayout()
@@ -188,8 +193,7 @@ class Window(QMainWindow):
         self.shortcut.activated.connect(self.addEndTime)
         self.shortcut = QShortcut(QKeySequence("L"), self)
         self.shortcut.activated.connect(self.openFile)
-        self.shortcut = QShortcut(QKeySequence("C"), self)
-        self.shortcut.activated.connect(self.clearTable)
+
 
         self.shortcut = QShortcut(QKeySequence(Qt.Key_Right), self)
         self.shortcut.activated.connect(self.forwardSlider)
@@ -266,7 +270,9 @@ class Window(QMainWindow):
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.iLabel.currentText().split(' ', 1)[1]))
         self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.repCount.text()))
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.minReps.text()))
+        self.colNo += 1
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.maxReps.text()))
         self.colNo = 0
         self.rowNo += 1
 
@@ -344,15 +350,17 @@ class Window(QMainWindow):
                             self.colNo = 0
 
     def insertBaseRow(self):
-        self.tableWidget.setColumnCount(5) #, Start Time, End Time, TimeStamp
-        self.tableWidget.setRowCount(50)
+        self.tableWidget.setColumnCount(7) #, Start Time, End Time, TimeStamp
+        self.tableWidget.setRowCount(1000)
         self.rowNo = 1
         self.colNo = 0
         self.tableWidget.setItem(0, 0, QTableWidgetItem("Start Time"))
         self.tableWidget.setItem(0, 1, QTableWidgetItem("End Time"))
         self.tableWidget.setItem(0, 2, QTableWidgetItem("Label ID"))
         self.tableWidget.setItem(0, 3, QTableWidgetItem("Label Name"))
-        self.tableWidget.setItem(0, 4, QTableWidgetItem("Rep Count"))
+        self.tableWidget.setItem(0, 4, QTableWidgetItem("Min Reps"))
+        self.tableWidget.setItem(0, 5, QTableWidgetItem("Max Reps"))
+        self.tableWidget.setItem(0, 6, QTableWidgetItem("Notes"))
 
 
     def checkTableFrame(self, row, column):
@@ -403,13 +411,13 @@ class Window(QMainWindow):
         self.mediaPlayer.setPosition(self.mediaPlayer.position() + 1*60)
 
     def forwardSlider10(self):
-            self.mediaPlayer.setPosition(self.mediaPlayer.position() + 1000*60)
+            self.mediaPlayer.setPosition(self.mediaPlayer.position() + 10*60)
 
     def backSlider(self):
         self.mediaPlayer.setPosition(self.mediaPlayer.position() - 1*60)
 
     def backSlider10(self):
-        self.mediaPlayer.setPosition(self.mediaPlayer.position() - 1000*60)
+        self.mediaPlayer.setPosition(self.mediaPlayer.position() - 10*60)
 
     def volumeUp(self):
         self.mediaPlayer.setVolume(self.mediaPlayer.volume() + 10)
