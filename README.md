@@ -15,7 +15,9 @@
      pip install numpy
      sudo apt-get install python3-pyqt5
 ```
-
+ ### MacOs
+ There are currently issues using the PyQt5 interface with MacOs.
+ 
 ## Usage
    * Running the annotator
  ```
@@ -31,5 +33,6 @@
 - Add End Time: ]
 - Frame after next 10 frames: Shift + Left Arrow
 - Frame before prev 10 frames: Shift + Right Arrow
-- Clear entire table: C
+- Copy Prevous Row: C
+- Add New Row: R
 
