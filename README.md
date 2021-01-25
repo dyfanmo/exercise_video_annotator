@@ -16,7 +16,10 @@
      sudo apt-get install python3-pyqt5
 ```
  ### MacOs
- There are currently issues using the PyQt5 interface with MacOs.
+   ```
+     pip install numpy
+     brew install pyqt
+```
  
 ## Usage
    * Running the annotator
