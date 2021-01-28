@@ -38,4 +38,4 @@
 - Frame before prev 10 frames: Shift + Right Arrow
 - Copy Previous Row: C
 - Add New Row: R
-
+- Submit Values: ↵ 
