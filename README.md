@@ -16,12 +16,15 @@
      sudo apt-get install python3-pyqt5
 ```
  ### MacOs
- There are currently issues using the PyQt5 interface with MacOs.
+   ```
+     pip install numpy
+     brew install pyqt
+```
  
 ## Usage
    * Running the annotator
  ```
-     python pavs.py --classes_label_path config/classes.txt 
+     python pavs.py --classes_label_path config/classes.txt --form_error_path config/form_error.txt 
 
 ```
 
@@ -33,6 +36,6 @@
 - Add End Time: ]
 - Frame after next 10 frames: Shift + Left Arrow
 - Frame before prev 10 frames: Shift + Right Arrow
-- Copy Prevous Row: C
+- Copy Previous Row: C
 - Add New Row: R
 
