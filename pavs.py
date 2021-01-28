@@ -127,6 +127,16 @@ class Window(QMainWindow):
             self.formError.addItem(f"{i}. {form_error[0].strip()}")
         self.formError.activated[str].connect(self.style_choice)
 
+        self.orientation = QComboBox(self)
+        self.orientation.addItem("0. Front")
+        self.orientation.addItem("1. Back")
+        self.orientation.addItem("2. Left")
+        self.orientation.addItem("3. Right")
+        self.orientation.addItem("4. Diagonal")
+        self.orientation.activated[str].connect(self.style_choice)
+
+
+
         # self.iLabel = QLineEdit()
         # self.iLabel.setPlaceholderText("Label")
 
@@ -174,6 +184,7 @@ class Window(QMainWindow):
         inputFields.addWidget(self.startTime, 4)
         inputFields.addWidget(self.endTime, 4)
         inputFields.addWidget(self.iLabel, 4)
+        inputFields.addWidget(self.orientation, 2)
         inputFields.addWidget(self.minReps, 2)
         inputFields.addWidget(self.maxReps, 2)
         inputFields.addWidget(self.formError, 4)
@@ -210,7 +221,8 @@ class Window(QMainWindow):
         self.shortcut = QShortcut(QKeySequence("R"), self)
         self.shortcut.activated.connect(self.addRow)
 
-
+        self.shortcut = QShortcut(QKeySequence(Qt.Key_Return), self)
+        self.shortcut.activated.connect(self.next)
         self.shortcut = QShortcut(QKeySequence(Qt.Key_Right), self)
         self.shortcut.activated.connect(self.forwardSlider)
         self.shortcut = QShortcut(QKeySequence(Qt.Key_Left), self)
@@ -280,6 +292,8 @@ class Window(QMainWindow):
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.endTime.text()))
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.iLabel.currentText().split(' ', 1)[1]))
+        self.colNo += 1
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.orientation.currentText().split(' ', 1)[1]))
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.minReps.text()))
         self.colNo += 1
@@ -377,18 +391,19 @@ class Window(QMainWindow):
                             self.colNo = 0
 
     def insertBaseRow(self):
-        self.tableWidget.setColumnCount(8)  # , Start Time, End Time, TimeStamp
+        self.tableWidget.setColumnCount(9)  # , Start Time, End Time, TimeStamp
         self.tableWidget.setRowCount(500)
         self.rowNo = 1
         self.colNo = 0
         self.tableWidget.setItem(0, 0, QTableWidgetItem("start_time"))
         self.tableWidget.setItem(0, 1, QTableWidgetItem("end_time"))
         self.tableWidget.setItem(0, 2, QTableWidgetItem("exercise"))
-        self.tableWidget.setItem(0, 3, QTableWidgetItem("min_reps"))
-        self.tableWidget.setItem(0, 4, QTableWidgetItem("max_reps"))
-        self.tableWidget.setItem(0, 5, QTableWidgetItem("form_error"))
-        self.tableWidget.setItem(0, 6, QTableWidgetItem("reps_to_judge"))
-        self.tableWidget.setItem(0, 7, QTableWidgetItem("notes"))
+        self.tableWidget.setItem(0, 3, QTableWidgetItem("orientation"))
+        self.tableWidget.setItem(0, 4, QTableWidgetItem("min_reps"))
+        self.tableWidget.setItem(0, 5, QTableWidgetItem("max_reps"))
+        self.tableWidget.setItem(0, 6, QTableWidgetItem("form_error"))
+        self.tableWidget.setItem(0, 7, QTableWidgetItem("reps_to_judge"))
+        self.tableWidget.setItem(0, 8, QTableWidgetItem("notes"))
 
     def checkTableFrame(self, row, column):
         if ((row > 0) and (column < 2)):
