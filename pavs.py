@@ -99,10 +99,10 @@ class Window(QMainWindow):
         # self.ctr.setPlaceholderText("Extra")
 
         self.startTime = QLineEdit()
-        self.startTime.setPlaceholderText("Select Start Time")
+        self.startTime.setPlaceholderText("Start Time")
 
         self.endTime = QLineEdit()
-        self.endTime.setPlaceholderText("Select End Time")
+        self.endTime.setPlaceholderText("End Time")
 
         self.minReps = QLineEdit()
         self.minReps.setPlaceholderText("Min Reps")
@@ -116,23 +116,23 @@ class Window(QMainWindow):
         self.iLabel = QComboBox(self)
         exercise_file = open(args.classes_label_path, 'r')
         exercise_list = [line.split(',') for line in exercise_file.readlines()]
-        for i, exercise_class in enumerate(exercise_list):
-            self.iLabel.addItem(f"{i}. {exercise_class[0].strip()}")
+        for exercise_class in (exercise_list):
+            self.iLabel.addItem(exercise_class[0].strip())
         self.iLabel.activated[str].connect(self.style_choice)
 
         self.formError = QComboBox(self)
         form_error_file = open(args.form_error_path, 'r')
         form_error_list = [line.split(',') for line in form_error_file.readlines()]
-        for i, form_error in enumerate(form_error_list):
-            self.formError.addItem(f"{i}. {form_error[0].strip()}")
+        for form_error in (form_error_list):
+            self.formError.addItem(form_error[0].strip())
         self.formError.activated[str].connect(self.style_choice)
 
         self.orientation = QComboBox(self)
-        self.orientation.addItem("0. Front")
-        self.orientation.addItem("1. Back")
-        self.orientation.addItem("2. Left")
-        self.orientation.addItem("3. Right")
-        self.orientation.addItem("4. Diagonal")
+        self.orientation.addItem("front")
+        self.orientation.addItem("back")
+        self.orientation.addItem("left")
+        self.orientation.addItem("right")
+        self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
 
 
@@ -171,24 +171,24 @@ class Window(QMainWindow):
         # layout.addWidget(self.videoWidget)
 
         layout = QVBoxLayout()
-        layout.addWidget(self.videoWidget, 3)
+        layout.addWidget(self.videoWidget, 1)
         # layout.addLayout(self.grid_root)
         layout.addLayout(controlLayout)
         layout.addWidget(self.errorLabel)
 
-        plotBox.addLayout(layout, 5)
+        plotBox.addLayout(layout, 1)
         # }
 
         # Right Layout {
         inputFields = QHBoxLayout()
-        inputFields.addWidget(self.startTime, 4)
-        inputFields.addWidget(self.endTime, 4)
-        inputFields.addWidget(self.iLabel, 4)
-        inputFields.addWidget(self.orientation, 2)
-        inputFields.addWidget(self.minReps, 2)
-        inputFields.addWidget(self.maxReps, 2)
-        inputFields.addWidget(self.formError, 4)
-        inputFields.addWidget(self.repsToJudge, 3)
+        inputFields.addWidget(self.startTime, 1)
+        inputFields.addWidget(self.endTime, 1)
+        inputFields.addWidget(self.iLabel, 1)
+        inputFields.addWidget(self.orientation, 1)
+        inputFields.addWidget(self.minReps, 1)
+        inputFields.addWidget(self.maxReps, 1)
+        inputFields.addWidget(self.formError, 1)
+        inputFields.addWidget(self.repsToJudge, 1)
 
         # inputFields.addWidget(self.ctr)
 
@@ -291,15 +291,15 @@ class Window(QMainWindow):
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.endTime.text()))
         self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.iLabel.currentText().split(' ', 1)[1]))
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.iLabel.currentText()))
         self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.orientation.currentText().split(' ', 1)[1]))
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.orientation.currentText()))
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.minReps.text()))
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.maxReps.text()))
         self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.formError.currentText().split(' ', 1)[1]))
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.formError.currentText()))
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.repsToJudge.text()))
         self.colNo = 0
