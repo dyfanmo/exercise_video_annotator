@@ -1,6 +1,8 @@
 squat
-pushup
-walking lunge
-jumping lunges
-plank
-bicycle crunch
+lunge
+lat_lunge
+sit_up
+push_up
+star_jump
+squat_jump_floor_tap
+squat_jump

@@ -11,6 +11,8 @@ import csv
 import sys
 import numpy as np
 import argparse
+import pandas as pd
+from utils import convert_time_to_frame_num_df
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--classes_label_path", type=str)
@@ -108,7 +110,7 @@ class Window(QMainWindow):
         self.minReps.setPlaceholderText("Min Reps")
 
         self.maxReps = QLineEdit()
-        self.maxReps.setPlaceholderText("Max Reps")
+        self.maxReps.setPlaceholderText("Reps")
 
         self.repsToJudge = QLineEdit()
         self.repsToJudge.setPlaceholderText("Reps To Judge")
@@ -129,9 +131,7 @@ class Window(QMainWindow):
 
         self.orientation = QComboBox(self)
         self.orientation.addItem("front")
-        self.orientation.addItem("back")
-        self.orientation.addItem("left")
-        self.orientation.addItem("right")
+        self.orientation.addItem("side")
         self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
 
@@ -251,6 +251,7 @@ class Window(QMainWindow):
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(fileName)))
             self.playButton.setEnabled(True)
         self.videopath = QUrl.fromLocalFile(fileName)
+        self.video_file_path = fileName
         self.errorLabel.setText(fileName)
         self.errorLabel.setStyleSheet('color: black')
 
@@ -356,6 +357,12 @@ class Window(QMainWindow):
                         else:
                             break
                     writer.writerow(rowdata)
+
+            if self.video_file_path:
+                labels_df = pd.read_csv(path)
+                labels_df = convert_time_to_frame_num_df(labels_df, self.video_file_path)
+                labels_df.to_csv(path)
+
         # self.isChanged = False
         # self.setCurrentFile(path)
 
@@ -378,17 +385,26 @@ class Window(QMainWindow):
                     if i == 0:
                         continue
                     else:
-                        if (len(row) == 4):
-                            st, et, li, ln = row
-                            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(st))
+                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[0]))
+                        self.colNo += 1
+                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[1]))
+                        self.colNo += 1
+                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[2]))
+                        self.colNo += 1
+                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[3]))
+                        self.colNo += 1
+                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[4]))
+                        self.colNo += 1
+                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[5]))
+                        self.colNo += 1
+                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[6]))
+                        self.colNo += 1
+                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[7]))
+                        if len(row) == 9:
                             self.colNo += 1
-                            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(et))
-                            self.colNo += 1
-                            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(str(li)))
-                            self.colNo += 1
-                            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(ln))
-                            self.rowNo += 1
-                            self.colNo = 0
+                            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[8]))
+                        self.colNo = 0
+                        self.rowNo += 1
 
     def insertBaseRow(self):
         self.tableWidget.setColumnCount(9)  # , Start Time, End Time, TimeStamp
@@ -400,7 +416,7 @@ class Window(QMainWindow):
         self.tableWidget.setItem(0, 2, QTableWidgetItem("exercise"))
         self.tableWidget.setItem(0, 3, QTableWidgetItem("orientation"))
         self.tableWidget.setItem(0, 4, QTableWidgetItem("min_reps"))
-        self.tableWidget.setItem(0, 5, QTableWidgetItem("max_reps"))
+        self.tableWidget.setItem(0, 5, QTableWidgetItem("reps"))
         self.tableWidget.setItem(0, 6, QTableWidgetItem("form_error"))
         self.tableWidget.setItem(0, 7, QTableWidgetItem("reps_to_judge"))
         self.tableWidget.setItem(0, 8, QTableWidgetItem("notes"))
