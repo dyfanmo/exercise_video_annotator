@@ -5,6 +5,7 @@ Annotate videos in common formats(mp4, avi, mkv, wav, mp3)
 
 The table in the exercise video annotator is used to input and store the labels for each exercise. The data in the table can be exported and imported into a CSV File.  The data is then transformed before exporting, converting the times to frame number and generate unique labels for each exercise.
 
+![example](https://github.com/atlas-fitness/exercise_video_annotator/blob/mo/EVAL0011/Examples/example.png)
 
 ## Installation
  ### Windows
