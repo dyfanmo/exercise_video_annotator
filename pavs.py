@@ -12,11 +12,11 @@ import sys
 import numpy as np
 import argparse
 import pandas as pd
-from utils import convert_time_to_frame_num_df
+from utils import convert_time_to_frame_num_df, add_labels_column
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--classes_label_path", type=str)
-parser.add_argument("--form_error_path", type=str)
+parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
+parser.add_argument("--rules_path", type=str, default="config/rules.txt")
 args = parser.parse_args()
 
 audio_extensions = [".wav", ".mp3"]
@@ -84,6 +84,11 @@ class Window(QMainWindow):
         self.elbl.setUpdatesEnabled(True)
         # self.elbl.setStyleSheet(stylesheet(self))
 
+        self.playbackIndicator = QLabel("X" + str(self.mediaPlayer.playbackRate()))
+        self.playbackIndicator.setFixedWidth(60)
+        self.playbackIndicator.setUpdatesEnabled(True)
+
+
         self.nextButton = QPushButton("-->")
         self.nextButton.clicked.connect(self.next)
 
@@ -122,12 +127,12 @@ class Window(QMainWindow):
             self.iLabel.addItem(exercise_class[0].strip())
         self.iLabel.activated[str].connect(self.style_choice)
 
-        self.formError = QComboBox(self)
-        form_error_file = open(args.form_error_path, 'r')
-        form_error_list = [line.split(',') for line in form_error_file.readlines()]
-        for form_error in (form_error_list):
-            self.formError.addItem(form_error[0].strip())
-        self.formError.activated[str].connect(self.style_choice)
+        self.rules = QComboBox(self)
+        rules_file = open(args.rules_path, 'r')
+        rules_list = [line.split(',') for line in rules_file.readlines()]
+        for rule in (rules_list):
+            self.rules.addItem(rule[0].strip())
+        self.rules.activated[str].connect(self.style_choice)
 
         self.orientation = QComboBox(self)
         self.orientation.addItem("front")
@@ -162,6 +167,7 @@ class Window(QMainWindow):
         controlLayout.addWidget(self.lbl)
         controlLayout.addWidget(self.positionSlider)
         controlLayout.addWidget(self.elbl)
+        controlLayout.addWidget(self.playbackIndicator)
 
 
         wid = QWidget(self)
@@ -187,7 +193,7 @@ class Window(QMainWindow):
         inputFields.addWidget(self.orientation, 1)
         inputFields.addWidget(self.minReps, 1)
         inputFields.addWidget(self.maxReps, 1)
-        inputFields.addWidget(self.formError, 1)
+        inputFields.addWidget(self.rules, 1)
         inputFields.addWidget(self.repsToJudge, 1)
 
         # inputFields.addWidget(self.ctr)
@@ -220,6 +226,11 @@ class Window(QMainWindow):
         self.shortcut.activated.connect(self.copyRow)
         self.shortcut = QShortcut(QKeySequence("R"), self)
         self.shortcut.activated.connect(self.addRow)
+        self.shortcut = QShortcut(QKeySequence("+"), self)
+        self.shortcut.activated.connect(self.increase_playback)
+        self.shortcut = QShortcut(QKeySequence("-"), self)
+        self.shortcut.activated.connect(self.decrease_playback)
+
 
         self.shortcut = QShortcut(QKeySequence(Qt.Key_Return), self)
         self.shortcut.activated.connect(self.next)
@@ -300,7 +311,7 @@ class Window(QMainWindow):
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.maxReps.text()))
         self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.formError.currentText()))
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.rules.currentText()))
         self.colNo += 1
         self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.repsToJudge.text()))
         self.colNo = 0
@@ -338,6 +349,27 @@ class Window(QMainWindow):
         rowCount = self.tableWidget.rowCount()
         self.tableWidget.insertRow(rowCount)
 
+
+    def increase_playback(self):
+        original_position = self.mediaPlayer.position()
+        speed_multiplier = round(self.mediaPlayer.playbackRate() + 0.05, 2)
+        self.mediaPlayer.setPlaybackRate(speed_multiplier)
+        self.mediaPlayer.setPosition(original_position)
+        self.update_playback_label()
+
+
+
+
+    def decrease_playback(self):
+        if self.mediaPlayer.playbackRate() > 0:
+            original_position = self.mediaPlayer.position()
+            speed_multiplier = round(self.mediaPlayer.playbackRate() - 0.05, 2)
+            self.mediaPlayer.setPlaybackRate(speed_multiplier)
+            self.mediaPlayer.setPosition(original_position)
+            self.update_playback_label()
+
+
+
     def export(self):
         if self.fileNameExist:
             self.fName = ((self.fileNameExist.rsplit('/', 1)[1]).rsplit('.', 1))[0]
@@ -358,23 +390,19 @@ class Window(QMainWindow):
                             break
                     writer.writerow(rowdata)
 
+            labels_df = pd.read_csv(path)
             if self.video_file_path:
-                labels_df = pd.read_csv(path)
                 labels_df = convert_time_to_frame_num_df(labels_df, self.video_file_path)
-                labels_df.to_csv(path)
+                labels_df = labels_df.drop(['start_time', "end_time"], axis=1)
 
-        # self.isChanged = False
-        # self.setCurrentFile(path)
+            labels_df = add_labels_column(labels_df)
+            labels_df.to_csv(path)
 
     def importCSV(self):
-        # if fName2 != "":
-        # self.fName2 = ((self.fileNameExist.rsplit('/', 1)[1]).rsplit('.',1))[0]
-        # path, _ = QFileDialog.getSaveFileName(self, 'Save File', QDir.homePath() + "/"+self.fName2+".csv", "CSV Files(*.csv *.txt)")
-        # else:
-        self.clearTable()
         path, _ = QFileDialog.getOpenFileName(self, 'Save File', QDir.homePath(), "CSV Files(*.csv *.txt)")
         print(path)
         if path:
+            self.clearTable()
             with open(path, 'r') as stream:
                 print("loading", path)
                 reader = csv.reader(stream)
@@ -417,7 +445,7 @@ class Window(QMainWindow):
         self.tableWidget.setItem(0, 3, QTableWidgetItem("orientation"))
         self.tableWidget.setItem(0, 4, QTableWidgetItem("min_reps"))
         self.tableWidget.setItem(0, 5, QTableWidgetItem("reps"))
-        self.tableWidget.setItem(0, 6, QTableWidgetItem("form_error"))
+        self.tableWidget.setItem(0, 6, QTableWidgetItem("rule"))
         self.tableWidget.setItem(0, 7, QTableWidgetItem("reps_to_judge"))
         self.tableWidget.setItem(0, 8, QTableWidgetItem("notes"))
 
@@ -513,6 +541,10 @@ class Window(QMainWindow):
 
     def clickExit(self):
         sys.exit()
+
+    def update_playback_label(self):
+        self.playbackIndicator.clear()
+        self.playbackIndicator.setText("X"+ str(self.mediaPlayer.playbackRate()))
 
 
 App = QApplication(sys.argv)
