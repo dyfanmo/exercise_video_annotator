@@ -1,4 +1,11 @@
-# Python Annotator for VideoS
+# Exercise Video Annotator
+A simple video labelling tool developed in PyQt5 for exercise videos.
+
+Annotate videos in common formats(mp4, avi, mkv, wav, mp3)
+
+The table in the exercise video annotator is used to input and store the labels for each exercise. The data in the table can be exported and imported into a CSV File.  The data is then transformed before exporting, converting the times to frame number and generate unique labels for each exercise.
+
+![example](https://github.com/atlas-fitness/exercise_video_annotator/blob/mo/EVAL0011/Examples/example.png)
 
 ## Installation
  ### Windows
@@ -24,7 +31,7 @@
 ## Usage
    * Running the annotator
  ```
-     python pavs.py --classes_label_path config/classes.txt --form_error_path config/form_error.txt 
+     python pavs.py
 
 ```
 
@@ -36,6 +43,11 @@
 - Add End Time: ]
 - Frame after next 10 frames: Shift + Left Arrow
 - Frame before prev 10 frames: Shift + Right Arrow
+- Increase playback speed: +
+- Decrease playback speed: -
 - Copy Previous Row: C
 - Add New Row: R
 - Submit Values: ↵ 
+
+## Notes
+- To delete a row click the index number of the row you want to delete, then press the delete button
