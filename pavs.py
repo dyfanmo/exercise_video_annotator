@@ -117,8 +117,11 @@ class Window(QMainWindow):
         self.delButton = QPushButton("Delete")
         self.delButton.clicked.connect(self.delete)
 
-        self.exportButton = QPushButton("Export")
-        self.exportButton.clicked.connect(self.export)
+        self.exportToCsvButton = QPushButton("Export to CSV")
+        self.exportToCsvButton.clicked.connect(self.exportCsv)
+
+        self.exportToDbButton = QPushButton("Export to DB")
+        self.exportToDbButton.clicked.connect(self.exportDb)
 
         self.importButton = QPushButton("Import")
         self.importButton.clicked.connect(self.importCSV)
@@ -218,7 +221,8 @@ class Window(QMainWindow):
         feats = QHBoxLayout()
         feats.addWidget(self.nextButton)
         feats.addWidget(self.delButton)
-        feats.addWidget(self.exportButton)
+        feats.addWidget(self.exportToCsvButton)
+        feats.addWidget(self.exportToDbButton)
         feats.addWidget(self.importButton)
 
         layout2 = QVBoxLayout()
@@ -382,7 +386,7 @@ class Window(QMainWindow):
             self.mediaPlayer.setPosition(original_position)
             self.update_playback_label()
 
-    def export(self):
+    def exportCsv(self):
         if self.fileNameExist:
             self.fName = ((self.fileNameExist.rsplit("/", 1)[1]).rsplit(".", 1))[0]
         path, _ = QFileDialog.getSaveFileName(
@@ -410,6 +414,9 @@ class Window(QMainWindow):
 
             labels_df = add_labels_column(labels_df)
             labels_df.to_csv(path)
+
+    def exportDb(self):
+        pass
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
