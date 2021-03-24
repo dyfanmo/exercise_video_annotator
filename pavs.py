@@ -24,12 +24,15 @@ from PyQt5.QtWidgets import (
     QAction,
     QGridLayout,
     QShortcut,
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
 )
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5 import QtCore, Qt, QtGui
 from PyQt5.QtCore import QRect, QSize, Qt, QUrl, QDir, QTime, pyqtSlot
-from PyQt5.QtGui import QFont, QPixmap, QImage, QColor, QPainter, QPen, QKeySequence, QStandardItemModel
+from PyQt5.QtGui import QFont, QPixmap, QImage, QColor, QPainter, QPen, QKeySequence, QStandardItemModel, QIntValidator
 import os
 import csv
 import sys
@@ -45,6 +48,42 @@ args = parser.parse_args()
 
 audio_extensions = [".wav", ".mp3"]
 video_extensions = [".avi", ".mp4", ".mkv"]
+
+
+class ExportDBInputDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.userId = QLineEdit(self)
+        self.videoResultId = QLineEdit(self)
+        self.overrideLabels = QCheckBox("Overwrite existing labels, if any?", self)
+        self.overrideLabels.stateChanged.connect(self.clickBox)
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+
+        self.override = False
+        self.onlyInt = QIntValidator()
+        self.userId.setValidator(self.onlyInt)
+        self.videoResultId.setValidator(self.onlyInt)
+
+        layout = QFormLayout(self)
+        layout.addRow("User ID", self.userId)
+        layout.addRow("Video Result ID", self.videoResultId)
+        layout.addRow(self.overrideLabels)
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def getInputs(self):
+        return (self.userId.text(), self.videoResultId.text(), self.override)
+
+    def clickBox(self, state):
+        if state == QtCore.Qt.Checked:
+            print("Checked")
+            self.override = True
+        else:
+            print("Unchecked")
+            self.override = False
 
 
 class Window(QMainWindow):
@@ -416,7 +455,17 @@ class Window(QMainWindow):
             labels_df.to_csv(path)
 
     def exportDb(self):
-        pass
+        dialog = ExportDBInputDialog()
+        if dialog.exec():
+            uid, vrid, override = dialog.getInputs()
+            if uid == "" or vrid == "":
+                # show error inputs needed!
+                uid = 0
+                vrid = 0
+
+            user_id = int(uid)
+            video_result_id = int(vrid)
+            print(f"user_id: {user_id} | video_result_id: {video_result_id} | override: {override}")
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
