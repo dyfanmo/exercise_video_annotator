@@ -32,15 +32,14 @@ def add_labels_column(df):
     unique_exercises = df["exercise"].unique()
     for exercise in unique_exercises:
         exercise_df = df[df["exercise"] == exercise]
-        start_time = ''
+        start_time = ""
         id = 0
         for index, exercise_row in exercise_df.iterrows():
             if start_time != exercise_row["start_frame"]:
                 start_time = exercise_row["start_frame"]
                 id += 1
 
-            df.loc[index, "label"] = exercise + '_' + str(id)
+            df.loc[index, "label"] = exercise + "_" + str(id)
 
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
     return df
-
