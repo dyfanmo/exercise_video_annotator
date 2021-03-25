@@ -118,8 +118,8 @@ def send_labels_to_api(user_id, video_result_id, override, labels_df):
                         "video_result_id": video_result_id,
                         "name": name,
                     },
-                ).json()
-                video_label_id = response["id"] if response.status_code == 200 else 0
+                )
+                video_label_id = response.json()["id"] if response.status_code == 200 else 0
                 response = session.put(f"{server}/video_label/{video_label_id}", json=request_body)
                 if response.status_code != 200:
                     errors.append(f"Failed to modify existing label {name}")
