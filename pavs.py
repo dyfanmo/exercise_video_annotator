@@ -39,7 +39,8 @@ import sys
 import numpy as np
 import argparse
 import pandas as pd
-from utils import convert_time_to_frame_num_df, add_labels_column
+import tempfile
+from utils import convert_time_to_frame_num_df, add_labels_column, send_labels_to_api
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
@@ -425,6 +426,29 @@ class Window(QMainWindow):
             self.mediaPlayer.setPosition(original_position)
             self.update_playback_label()
 
+    def saveToCsv(self, filepath):
+        with open(filepath, "w") as stream:
+            print("saving", filepath)
+            writer = csv.writer(stream)
+            for row in range(self.tableWidget.rowCount()):
+                rowdata = []
+                for column in range(self.tableWidget.columnCount()):
+                    item = self.tableWidget.item(row, column)
+                    if item is not None and item != "":
+                        rowdata.append(item.text())
+                    else:
+                        break
+                writer.writerow(rowdata)
+
+        labels_df = pd.read_csv(filepath)
+        if self.video_file_path:
+            labels_df = convert_time_to_frame_num_df(labels_df, self.video_file_path)
+            labels_df = labels_df.drop(["start_time", "end_time"], axis=1)
+
+        labels_df = add_labels_column(labels_df)
+        labels_df.to_csv(filepath)
+        return labels_df
+
     def exportCsv(self):
         if self.fileNameExist:
             self.fName = ((self.fileNameExist.rsplit("/", 1)[1]).rsplit(".", 1))[0]
@@ -432,27 +456,7 @@ class Window(QMainWindow):
             self, "Save File", QDir.homePath() + "/" + self.fName + ".csv", "CSV Files(*.csv *.txt)"
         )
         if path:
-            with open(path, "w") as stream:
-                print("saving", path)
-                writer = csv.writer(stream)
-                # writer = csv.writer(stream, delimiter=self.delimit)
-                for row in range(self.tableWidget.rowCount()):
-                    rowdata = []
-                    for column in range(self.tableWidget.columnCount()):
-                        item = self.tableWidget.item(row, column)
-                        if item is not None and item != "":
-                            rowdata.append(item.text())
-                        else:
-                            break
-                    writer.writerow(rowdata)
-
-            labels_df = pd.read_csv(path)
-            if self.video_file_path:
-                labels_df = convert_time_to_frame_num_df(labels_df, self.video_file_path)
-                labels_df = labels_df.drop(["start_time", "end_time"], axis=1)
-
-            labels_df = add_labels_column(labels_df)
-            labels_df.to_csv(path)
+            self.saveToCsv(path)
 
     def exportDb(self):
         dialog = ExportDBInputDialog()
@@ -465,7 +469,11 @@ class Window(QMainWindow):
 
             user_id = int(uid)
             video_result_id = int(vrid)
-            print(f"user_id: {user_id} | video_result_id: {video_result_id} | override: {override}")
+            temp_csv_fp = os.path.join(tempfile.gettempdir(), "temp_labels.csv")
+            os.makedirs(tempfile.gettempdir(), exist_ok=True)
+
+            labels_df = self.saveToCsv(temp_csv_fp)
+            send_labels_to_api(user_id, video_result_id, override, labels_df)
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")

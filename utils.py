@@ -43,3 +43,12 @@ def add_labels_column(df):
 
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
     return df
+
+
+def send_labels_to_api(user_id, video_result_id, override, labels_df):
+    # determine server
+    # get token
+    # iterate and post labels
+    # if override, put failing posts
+    # return errors to display to user
+    pass
