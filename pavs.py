@@ -487,9 +487,8 @@ class Window(QMainWindow):
         if dialog.exec():
             uid, vrid, override = dialog.getInputs()
             if uid == "" or vrid == "":
-                # show error inputs needed!
-                uid = 0
-                vrid = 0
+                showErrorDialog("Both user ID and video result ID are required.")
+                return
 
             user_id = int(uid)
             video_result_id = int(vrid)

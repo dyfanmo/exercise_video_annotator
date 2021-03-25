@@ -84,7 +84,11 @@ def send_labels_to_api(user_id, video_result_id, override, labels_df):
     if user_id > 1000:
         server = "https://atlas-remote-prod.atlasaiapi.co.uk/api/v1"
     # get token
-    sess = get_session(server)
+    session = get_session(server)
+    # Check VideoResult exists
+    response = session.get(f"{server}/video_result/{video_result_id}")
+    if response.status_code != 200:
+        return f"Video result with ID {video_result_id} doesn't exist."
     # iterate and post labels
     for (_, label_row) in labels_df.iterrows():
         name = checked_value(label_row, "label", get_random_string())
