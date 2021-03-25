@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
+    QMessageBox,
 )
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
@@ -49,6 +50,29 @@ args = parser.parse_args()
 
 audio_extensions = [".wav", ".mp3"]
 video_extensions = [".avi", ".mp4", ".mkv"]
+
+
+def showSuccessDialog(message):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Information)
+
+    msg.setWindowTitle("Success")
+    msg.setText(message)
+    msg.setStandardButtons(QMessageBox.Ok)
+
+    msg.exec_()
+
+
+def showErrorDialog(message):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Critical)
+
+    msg.setWindowTitle("Error")
+    msg.setText("There are errors, see details.")
+    msg.setDetailedText(message)
+    msg.setStandardButtons(QMessageBox.Ok)
+
+    msg.exec_()
 
 
 class ExportDBInputDialog(QDialog):
@@ -472,8 +496,13 @@ class Window(QMainWindow):
             temp_csv_fp = os.path.join(tempfile.gettempdir(), "temp_labels.csv")
             os.makedirs(tempfile.gettempdir(), exist_ok=True)
 
+            self.video_file_path = None
             labels_df = self.saveToCsv(temp_csv_fp)
-            send_labels_to_api(user_id, video_result_id, override, labels_df)
+            errors = send_labels_to_api(user_id, video_result_id, override, labels_df)
+            if errors != "":
+                showErrorDialog(errors)
+            else:
+                showSuccessDialog("Labels uploaded successfully!")
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
