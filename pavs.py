@@ -1,18 +1,47 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QLineEdit, QComboBox, QFileDialog, QStyleFactory, \
-    QHBoxLayout, QLabel, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget, QStatusBar, QTableWidget, QVBoxLayout, \
-    QTableWidgetItem, QHBoxLayout, QSplitter, QGroupBox, QFormLayout, QAction, QGridLayout, QShortcut
+from PyQt5.QtWidgets import (
+    QMainWindow,
+    QApplication,
+    QPushButton,
+    QLineEdit,
+    QComboBox,
+    QFileDialog,
+    QStyleFactory,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QSlider,
+    QStyle,
+    QVBoxLayout,
+    QWidget,
+    QStatusBar,
+    QTableWidget,
+    QVBoxLayout,
+    QTableWidgetItem,
+    QHBoxLayout,
+    QSplitter,
+    QGroupBox,
+    QFormLayout,
+    QAction,
+    QGridLayout,
+    QShortcut,
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QMessageBox,
+)
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5 import QtCore, Qt, QtGui
 from PyQt5.QtCore import QRect, QSize, Qt, QUrl, QDir, QTime, pyqtSlot
-from PyQt5.QtGui import QFont, QPixmap, QImage, QColor, QPainter, QPen, QKeySequence, QStandardItemModel
+from PyQt5.QtGui import QFont, QPixmap, QImage, QColor, QPainter, QPen, QKeySequence, QStandardItemModel, QIntValidator
 import os
 import csv
 import sys
 import numpy as np
 import argparse
 import pandas as pd
-from utils import convert_time_to_frame_num_df, add_labels_column
+import tempfile
+from utils import convert_time_to_frame_num_df, add_labels_column, send_labels_to_api
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
@@ -23,8 +52,71 @@ audio_extensions = [".wav", ".mp3"]
 video_extensions = [".avi", ".mp4", ".mkv"]
 
 
-class Window(QMainWindow):
+def showErrorDialog(message):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Critical)
 
+    msg.setWindowTitle("Error")
+    msg.setText("There are errors, see details.")
+    msg.setDetailedText(message)
+    msg.setStandardButtons(QMessageBox.Ok)
+
+    msg.exec_()
+
+
+def showDialog(message, success=True):
+    msg = QMessageBox()
+    msg.setStandardButtons(QMessageBox.Ok)
+
+    title = "Success"
+    icon = QMessageBox.Information
+    text = message
+
+    if not success:
+        title = "Error"
+        icon = QMessageBox.Critical
+        text = "There are errors, see details."
+        msg.setDetailedText(message)
+
+    msg.setWindowTitle(title)
+    msg.setIcon(icon)
+    msg.setText(text)
+
+    msg.exec_()
+
+
+class ExportDBInputDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.userId = QLineEdit(self)
+        self.videoResultId = QLineEdit(self)
+        self.overrideLabels = QCheckBox("Overwrite existing labels, if any?", self)
+        self.overrideLabels.stateChanged.connect(self.clickBox)
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+
+        self.override = False
+        self.onlyInt = QIntValidator()
+        self.userId.setValidator(self.onlyInt)
+        self.videoResultId.setValidator(self.onlyInt)
+
+        layout = QFormLayout(self)
+        layout.addRow("User ID", self.userId)
+        layout.addRow("Video Result ID", self.videoResultId)
+        layout.addRow(self.overrideLabels)
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def getInputs(self):
+        return (self.userId.text(), self.videoResultId.text(), self.override)
+
+    def clickBox(self, state):
+        self.override = state == QtCore.Qt.Checked
+
+
+class Window(QMainWindow):
     def __init__(self):
         super().__init__()
 
@@ -74,12 +166,12 @@ class Window(QMainWindow):
         self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         self.playButton.clicked.connect(self.play)
 
-        self.lbl = QLabel('00:00:00')
+        self.lbl = QLabel("00:00:00")
         self.lbl.setFixedWidth(60)
         self.lbl.setUpdatesEnabled(True)
         # self.lbl.setStyleSheet(stylesheet(self))
 
-        self.elbl = QLabel('00:00:00')
+        self.elbl = QLabel("00:00:00")
         self.elbl.setFixedWidth(60)
         self.elbl.setUpdatesEnabled(True)
         # self.elbl.setStyleSheet(stylesheet(self))
@@ -88,19 +180,20 @@ class Window(QMainWindow):
         self.playbackIndicator.setFixedWidth(60)
         self.playbackIndicator.setUpdatesEnabled(True)
 
-
         self.nextButton = QPushButton("-->")
         self.nextButton.clicked.connect(self.next)
 
         self.delButton = QPushButton("Delete")
         self.delButton.clicked.connect(self.delete)
 
-        self.exportButton = QPushButton("Export")
-        self.exportButton.clicked.connect(self.export)
+        self.exportToCsvButton = QPushButton("Export to CSV")
+        self.exportToCsvButton.clicked.connect(self.exportCsv)
+
+        self.exportToDbButton = QPushButton("Export to DB")
+        self.exportToDbButton.clicked.connect(self.exportDb)
 
         self.importButton = QPushButton("Import")
         self.importButton.clicked.connect(self.importCSV)
-
 
         # self.ctr = QLineEdit()
         # self.ctr.setPlaceholderText("Extra")
@@ -121,16 +214,16 @@ class Window(QMainWindow):
         self.repsToJudge.setPlaceholderText("Reps To Judge")
 
         self.iLabel = QComboBox(self)
-        exercise_file = open(args.classes_label_path, 'r')
-        exercise_list = [line.split(',') for line in exercise_file.readlines()]
-        for exercise_class in (exercise_list):
+        exercise_file = open(args.classes_label_path, "r")
+        exercise_list = [line.split(",") for line in exercise_file.readlines()]
+        for exercise_class in exercise_list:
             self.iLabel.addItem(exercise_class[0].strip())
         self.iLabel.activated[str].connect(self.style_choice)
 
         self.rules = QComboBox(self)
-        rules_file = open(args.rules_path, 'r')
-        rules_list = [line.split(',') for line in rules_file.readlines()]
-        for rule in (rules_list):
+        rules_file = open(args.rules_path, "r")
+        rules_list = [line.split(",") for line in rules_file.readlines()]
+        for rule in rules_list:
             self.rules.addItem(rule[0].strip())
         self.rules.activated[str].connect(self.style_choice)
 
@@ -139,8 +232,6 @@ class Window(QMainWindow):
         self.orientation.addItem("side")
         self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
-
-
 
         # self.iLabel = QLineEdit()
         # self.iLabel.setPlaceholderText("Label")
@@ -154,8 +245,7 @@ class Window(QMainWindow):
         self.positionSlider.setAttribute(Qt.WA_TranslucentBackground, True)
 
         self.errorLabel = QLabel()
-        self.errorLabel.setSizePolicy(QSizePolicy.Preferred,
-                                      QSizePolicy.Maximum)
+        self.errorLabel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
 
         # Main plotBox
         plotBox = QHBoxLayout()
@@ -168,7 +258,6 @@ class Window(QMainWindow):
         controlLayout.addWidget(self.positionSlider)
         controlLayout.addWidget(self.elbl)
         controlLayout.addWidget(self.playbackIndicator)
-
 
         wid = QWidget(self)
         self.setCentralWidget(wid)
@@ -201,7 +290,8 @@ class Window(QMainWindow):
         feats = QHBoxLayout()
         feats.addWidget(self.nextButton)
         feats.addWidget(self.delButton)
-        feats.addWidget(self.exportButton)
+        feats.addWidget(self.exportToCsvButton)
+        feats.addWidget(self.exportToDbButton)
         feats.addWidget(self.importButton)
 
         layout2 = QVBoxLayout()
@@ -231,7 +321,6 @@ class Window(QMainWindow):
         self.shortcut = QShortcut(QKeySequence("-"), self)
         self.shortcut.activated.connect(self.decrease_playback)
 
-
         self.shortcut = QShortcut(QKeySequence(Qt.Key_Return), self)
         self.shortcut.activated.connect(self.next)
         self.shortcut = QShortcut(QKeySequence(Qt.Key_Right), self)
@@ -257,14 +346,14 @@ class Window(QMainWindow):
     def openFile(self):
         fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie", QDir.homePath())
 
-        if fileName != '':
+        if fileName != "":
             self.fileNameExist = fileName
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(fileName)))
             self.playButton.setEnabled(True)
         self.videopath = QUrl.fromLocalFile(fileName)
         self.video_file_path = fileName
         self.errorLabel.setText(fileName)
-        self.errorLabel.setStyleSheet('color: black')
+        self.errorLabel.setStyleSheet("color: black")
 
     def play(self):
         # self.is_playing_video = not self.is_playing_video
@@ -342,13 +431,14 @@ class Window(QMainWindow):
         columnCount = self.tableWidget.columnCount()
         for j in range(columnCount):
             if not self.tableWidget.item(self.rowNo - 1, j) is None:
-                self.tableWidget.setItem(self.rowNo, j, QTableWidgetItem(self.tableWidget.item(self.rowNo - 1, j).text()))
+                self.tableWidget.setItem(
+                    self.rowNo, j, QTableWidgetItem(self.tableWidget.item(self.rowNo - 1, j).text())
+                )
         self.rowNo += 1
 
     def addRow(self):
         rowCount = self.tableWidget.rowCount()
         self.tableWidget.insertRow(rowCount)
-
 
     def increase_playback(self):
         original_position = self.mediaPlayer.position()
@@ -356,9 +446,6 @@ class Window(QMainWindow):
         self.mediaPlayer.setPlaybackRate(speed_multiplier)
         self.mediaPlayer.setPosition(original_position)
         self.update_playback_label()
-
-
-
 
     def decrease_playback(self):
         if self.mediaPlayer.playbackRate() > 0:
@@ -368,42 +455,64 @@ class Window(QMainWindow):
             self.mediaPlayer.setPosition(original_position)
             self.update_playback_label()
 
+    def saveToCsv(self, filepath):
+        with open(filepath, "w") as stream:
+            print("saving", filepath)
+            writer = csv.writer(stream)
+            for row in range(self.tableWidget.rowCount()):
+                rowdata = []
+                for column in range(self.tableWidget.columnCount()):
+                    item = self.tableWidget.item(row, column)
+                    if item is not None and item != "":
+                        rowdata.append(item.text())
+                    else:
+                        break
+                writer.writerow(rowdata)
 
+        labels_df = pd.read_csv(filepath)
+        if self.video_file_path:
+            labels_df = convert_time_to_frame_num_df(labels_df, self.video_file_path)
+            labels_df = labels_df.drop(["start_time", "end_time"], axis=1)
 
-    def export(self):
+        labels_df = add_labels_column(labels_df)
+        labels_df.to_csv(filepath)
+        return labels_df
+
+    def exportCsv(self):
         if self.fileNameExist:
-            self.fName = ((self.fileNameExist.rsplit('/', 1)[1]).rsplit('.', 1))[0]
-        path, _ = QFileDialog.getSaveFileName(self, 'Save File', QDir.homePath() + "/" + self.fName + ".csv",
-                                              "CSV Files(*.csv *.txt)")
+            self.fName = ((self.fileNameExist.rsplit("/", 1)[1]).rsplit(".", 1))[0]
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save File", QDir.homePath() + "/" + self.fName + ".csv", "CSV Files(*.csv *.txt)"
+        )
         if path:
-            with open(path, 'w') as stream:
-                print("saving", path)
-                writer = csv.writer(stream)
-                # writer = csv.writer(stream, delimiter=self.delimit)
-                for row in range(self.tableWidget.rowCount()):
-                    rowdata = []
-                    for column in range(self.tableWidget.columnCount()):
-                        item = self.tableWidget.item(row, column)
-                        if item is not None and item is not "":
-                            rowdata.append(item.text())
-                        else:
-                            break
-                    writer.writerow(rowdata)
+            self.saveToCsv(path)
 
-            labels_df = pd.read_csv(path)
-            if self.video_file_path:
-                labels_df = convert_time_to_frame_num_df(labels_df, self.video_file_path)
-                labels_df = labels_df.drop(['start_time', "end_time"], axis=1)
+    def exportDb(self):
+        dialog = ExportDBInputDialog()
+        if dialog.exec():
+            uid, vrid, override = dialog.getInputs()
+            if uid == "" or vrid == "":
+                showDialog("Both user ID and video result ID are required.", success=False)
+                return
 
-            labels_df = add_labels_column(labels_df)
-            labels_df.to_csv(path)
+            user_id = int(uid)
+            video_result_id = int(vrid)
+            temp_csv_fp = os.path.join(tempfile.gettempdir(), "temp_labels.csv")
+            os.makedirs(tempfile.gettempdir(), exist_ok=True)
+
+            labels_df = self.saveToCsv(temp_csv_fp)
+            errors = send_labels_to_api(user_id, video_result_id, override, labels_df)
+            if errors != "":
+                showDialog(errors, success=False)
+            else:
+                showDialog("Labels uploaded successfully!")
 
     def importCSV(self):
-        path, _ = QFileDialog.getOpenFileName(self, 'Save File', QDir.homePath(), "CSV Files(*.csv *.txt)")
+        path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
         print(path)
         if path:
             self.clearTable()
-            with open(path, 'r') as stream:
+            with open(path, "r") as stream:
                 print("loading", path)
                 reader = csv.reader(stream)
                 # reader = csv.reader(stream, delimiter=';', quoting=csv.QUOTE_ALL)
@@ -450,10 +559,10 @@ class Window(QMainWindow):
         self.tableWidget.setItem(0, 8, QTableWidgetItem("notes"))
 
     def checkTableFrame(self, row, column):
-        if ((row > 0) and (column < 2)):
+        if (row > 0) and (column < 2):
             # print("Row %d and Column %d was clicked" % (row, column))
             item = self.tableWidget.item(row, column)
-            if (item != (None and "")):
+            if item != (None and ""):
                 try:
                     itemFrame = item.text()
                     itemFrame = itemFrame.split(":")
@@ -466,15 +575,13 @@ class Window(QMainWindow):
                     self.mediaPlayer.setPosition(frameTime * 1000 + 1 * 60)
                 except:
                     self.errorLabel.setText("Some Video Error - Please Recheck Video Imported!")
-                    self.errorLabel.setStyleSheet('color: red')
+                    self.errorLabel.setStyleSheet("color: red")
 
     def mediaStateChanged(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.playButton.setIcon(
-                self.style().standardIcon(QStyle.SP_MediaPause))
+            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
         else:
-            self.playButton.setIcon(
-                self.style().standardIcon(QStyle.SP_MediaPlay))
+            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def positionChanged(self, position):
         self.positionSlider.setValue(position)
@@ -491,7 +598,7 @@ class Window(QMainWindow):
     def handleError(self):
         self.playButton.setEnabled(False)
         self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
-        self.errorLabel.setStyleSheet('color: red')
+        self.errorLabel.setStyleSheet("color: red")
 
     def forwardSlider(self):
         self.mediaPlayer.setPosition(self.mediaPlayer.position() + 1 * 60)
@@ -544,7 +651,7 @@ class Window(QMainWindow):
 
     def update_playback_label(self):
         self.playbackIndicator.clear()
-        self.playbackIndicator.setText("X"+ str(self.mediaPlayer.playbackRate()))
+        self.playbackIndicator.setText("X" + str(self.mediaPlayer.playbackRate()))
 
 
 App = QApplication(sys.argv)
