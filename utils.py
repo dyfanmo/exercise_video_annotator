@@ -110,7 +110,6 @@ def send_labels_to_api(user_id, video_result_id, override, labels_df):
         response = session.post(f"{server}/video_label/", json=request_body)
         if response.status_code != 201:
             if override:
-                del request_body["video_result_id"]
                 # get video_label_id so we can PUT instead
                 response = session.get(
                     f"{server}/video_label/by_name",

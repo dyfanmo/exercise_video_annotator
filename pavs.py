@@ -495,7 +495,6 @@ class Window(QMainWindow):
             temp_csv_fp = os.path.join(tempfile.gettempdir(), "temp_labels.csv")
             os.makedirs(tempfile.gettempdir(), exist_ok=True)
 
-            # self.video_file_path = None
             labels_df = self.saveToCsv(temp_csv_fp)
             errors = send_labels_to_api(user_id, video_result_id, override, labels_df)
             if errors != "":
