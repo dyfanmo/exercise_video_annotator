@@ -52,17 +52,6 @@ audio_extensions = [".wav", ".mp3"]
 video_extensions = [".avi", ".mp4", ".mkv"]
 
 
-def showSuccessDialog(message):
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Information)
-
-    msg.setWindowTitle("Success")
-    msg.setText(message)
-    msg.setStandardButtons(QMessageBox.Ok)
-
-    msg.exec_()
-
-
 def showErrorDialog(message):
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Critical)
@@ -71,6 +60,27 @@ def showErrorDialog(message):
     msg.setText("There are errors, see details.")
     msg.setDetailedText(message)
     msg.setStandardButtons(QMessageBox.Ok)
+
+    msg.exec_()
+
+
+def showDialog(message, success=True):
+    msg = QMessageBox()
+    msg.setStandardButtons(QMessageBox.Ok)
+
+    title = "Success"
+    icon = QMessageBox.Information
+    text = message
+
+    if not success:
+        title = "Error"
+        icon = QMessageBox.Critical
+        text = "There are errors, see details."
+        msg.setDetailedText(message)
+
+    msg.setWindowTitle(title)
+    msg.setIcon(icon)
+    msg.setText(text)
 
     msg.exec_()
 
@@ -103,12 +113,7 @@ class ExportDBInputDialog(QDialog):
         return (self.userId.text(), self.videoResultId.text(), self.override)
 
     def clickBox(self, state):
-        if state == QtCore.Qt.Checked:
-            print("Checked")
-            self.override = True
-        else:
-            print("Unchecked")
-            self.override = False
+        self.override = state == QtCore.Qt.Checked
 
 
 class Window(QMainWindow):
@@ -487,7 +492,7 @@ class Window(QMainWindow):
         if dialog.exec():
             uid, vrid, override = dialog.getInputs()
             if uid == "" or vrid == "":
-                showErrorDialog("Both user ID and video result ID are required.")
+                showDialog("Both user ID and video result ID are required.", success=False)
                 return
 
             user_id = int(uid)
@@ -498,9 +503,9 @@ class Window(QMainWindow):
             labels_df = self.saveToCsv(temp_csv_fp)
             errors = send_labels_to_api(user_id, video_result_id, override, labels_df)
             if errors != "":
-                showErrorDialog(errors)
+                showDialog(errors, success=False)
             else:
-                showSuccessDialog("Labels uploaded successfully!")
+                showDialog("Labels uploaded successfully!")
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
