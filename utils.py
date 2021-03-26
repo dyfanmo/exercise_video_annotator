@@ -121,8 +121,10 @@ def send_labels_to_api(user_id, video_result_id, override, labels_df):
                 video_label_id = response.json()["id"] if response.status_code == 200 else 0
                 response = session.put(f"{server}/video_label/{video_label_id}", json=request_body)
                 if response.status_code != 200:
-                    errors.append(f"Failed to modify existing label {name}")
+                    errors.append(
+                        f"Failed to modify existing label {name} with error: {response.json()['errors']['name']}"
+                    )
             else:
-                errors.append(f"Failed to create label {name}")
+                errors.append(f"Failed to create label {name} with error: {response.json()['errors']['name']}")
     # return errors to display to user
-    return "\n".join(errors)
+    return "\n\n".join(errors)
