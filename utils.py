@@ -5,6 +5,9 @@ import pandas as pd
 import requests
 import string
 import random
+import tempfile
+
+from atlas_utils.aws_utils import aws_download_file
 
 
 def convert_time_to_seconds(time_string):
@@ -128,3 +131,12 @@ def send_labels_to_api(user_id, video_result_id, override, labels_df):
                 errors.append(f"Failed to create label {name} with error: {response.json()['errors']['name']}")
     # return errors to display to user
     return "\n\n".join(errors)
+
+
+def download_video_from_s3(user_id, video_result_id):
+    """Download video from S3 and put it in tmp dir. Returns filepath to local video"""
+    aws_fp = f"{user_id}/{video_result_id}/full_video.ts"
+    bucket = "atlas-remote-internal"
+    local_fp = os.path.join(tempfile.gettempdir(), "atlas_labelling_full_video.ts")
+    aws_download_file(aws_fp, local_fp=local_fp, bucket=bucket)
+    return local_fp

@@ -41,7 +41,7 @@ import numpy as np
 import argparse
 import pandas as pd
 import tempfile
-from utils import convert_time_to_frame_num_df, add_labels_column, send_labels_to_api
+from utils import convert_time_to_frame_num_df, add_labels_column, send_labels_to_api, download_video_from_s3
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
@@ -382,16 +382,19 @@ class Window(QMainWindow):
         openVideoDialog = OpenVideoInputDialog(self)
         if openVideoDialog.exec():
             user_id, video_result_id, video_filepath = openVideoDialog.getInputs()
-            print(f"user_id: {user_id} | video_result_id: {video_result_id} | video_filepath: {video_filepath}")
+
             self.userId = int(user_id) if user_id != "" else -1
             self.videoResultId = int(video_result_id) if video_result_id != "" else -1
             self.video_file_path = video_filepath
 
-            if video_filepath != "":
-                self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(video_filepath)))
-                self.playButton.setEnabled(True)
-            self.errorLabel.setText(video_filepath)
-            self.errorLabel.setStyleSheet("color: black")
+            if self.video_file_path == "":
+                try:
+                    self.video_file_path = download_video_from_s3(self.userId, self.videoResultId)
+                except:
+                    showErrorDialog("Failed to download video from S3. Check that the video exists and try again.")
+
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.video_file_path)))
+            self.playButton.setEnabled(True)
 
     def play(self):
         # self.is_playing_video = not self.is_playing_video
