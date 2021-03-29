@@ -156,17 +156,10 @@ class Window(QMainWindow):
         super().__init__()
 
         self.title = "Exercise Video Annotator"
-        # self.top = 100
-        # self.left = 100
-        # self.width = 300
-        # self.height = 400
-        # self.setWindowState = "Qt.WindowMaximized"
-        iconName = "home.png"
         self.InitWindow()
 
     def InitWindow(self):
         self.setWindowTitle(self.title)
-        # self.setWindowIcon(QtGui.QIcon(iconName))
         self.setWindowState(QtCore.Qt.WindowMaximized)
 
         self.UiComponents()
@@ -204,12 +197,10 @@ class Window(QMainWindow):
         self.lbl = QLabel("00:00:00")
         self.lbl.setFixedWidth(60)
         self.lbl.setUpdatesEnabled(True)
-        # self.lbl.setStyleSheet(stylesheet(self))
 
         self.elbl = QLabel("00:00:00")
         self.elbl.setFixedWidth(60)
         self.elbl.setUpdatesEnabled(True)
-        # self.elbl.setStyleSheet(stylesheet(self))
 
         self.playbackIndicator = QLabel("X" + str(self.mediaPlayer.playbackRate()))
         self.playbackIndicator.setFixedWidth(60)
@@ -229,9 +220,6 @@ class Window(QMainWindow):
 
         self.importButton = QPushButton("Import")
         self.importButton.clicked.connect(self.importCSV)
-
-        # self.ctr = QLineEdit()
-        # self.ctr.setPlaceholderText("Extra")
 
         self.startTime = QLineEdit()
         self.startTime.setPlaceholderText("Start Time")
@@ -268,9 +256,6 @@ class Window(QMainWindow):
         self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
 
-        # self.iLabel = QLineEdit()
-        # self.iLabel.setPlaceholderText("Label")
-
         self.positionSlider = QSlider(Qt.Horizontal)
         self.positionSlider.setRange(0, 100)
         self.positionSlider.sliderMoved.connect(self.setPosition)
@@ -286,7 +271,6 @@ class Window(QMainWindow):
         plotBox = QHBoxLayout()
 
         controlLayout = QHBoxLayout()
-        # controlLayout.setContentsMargins(0, 0, 0, 0)
         controlLayout.addWidget(openButton)
         controlLayout.addWidget(self.playButton)
         controlLayout.addWidget(self.lbl)
@@ -298,11 +282,8 @@ class Window(QMainWindow):
         self.setCentralWidget(wid)
 
         # Left Layout{
-        # layout.addWidget(self.videoWidget)
-
         layout = QVBoxLayout()
         layout.addWidget(self.videoWidget, 1)
-        # layout.addLayout(self.grid_root)
         layout.addLayout(controlLayout)
         layout.addWidget(self.errorLabel)
 
@@ -320,8 +301,6 @@ class Window(QMainWindow):
         inputFields.addWidget(self.rules, 1)
         inputFields.addWidget(self.repsToJudge, 1)
 
-        # inputFields.addWidget(self.ctr)
-
         feats = QHBoxLayout()
         feats.addWidget(self.nextButton)
         feats.addWidget(self.delButton)
@@ -333,12 +312,10 @@ class Window(QMainWindow):
         layout2.addWidget(self.tableWidget)
         layout2.addLayout(inputFields, 1)
         layout2.addLayout(feats, 2)
-        # layout2.addWidget(self.nextButton)
         # }
 
         plotBox.addLayout(layout2, 2)
 
-        # self.setLayout(layout)
         wid.setLayout(plotBox)
 
         self.shortcut = QShortcut(QKeySequence("["), self)
@@ -397,13 +374,10 @@ class Window(QMainWindow):
             self.playButton.setEnabled(True)
 
     def play(self):
-        # self.is_playing_video = not self.is_playing_video
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
         else:
             self.mediaPlayer.play()
-            # self._play_video()
-            # self.errorLabel.setText("Start: " + " -- " + " End:")
 
     def _play_video(self):
         if self.is_playing_video and self.video_fps:
@@ -447,11 +421,7 @@ class Window(QMainWindow):
         self.colNo = 0
         self.rowNo += 1
 
-        # print(self.ctr.text(), self.startTime.text(), self.iLabel.text(), self.rowNo, self.colNo)
-        # print(self.iLabel.currentIndex())
-
     def delete(self):
-        # print("delete")
         index_list = []
         for model_index in self.tableWidget.selectionModel().selectedRows():
             index = QtCore.QPersistentModelIndex(model_index)
@@ -556,9 +526,6 @@ class Window(QMainWindow):
             with open(path, "r") as stream:
                 print("loading", path)
                 reader = csv.reader(stream)
-                # reader = csv.reader(stream, delimiter=';', quoting=csv.QUOTE_ALL)
-                # reader = csv.reader(stream, delimiter=';', quoting=csv.QUOTE_ALL)
-                # for row in reader:
                 for i, row in enumerate(reader):
                     if i == 0:
                         continue
@@ -601,7 +568,6 @@ class Window(QMainWindow):
 
     def checkTableFrame(self, row, column):
         if (row > 0) and (column < 2):
-            # print("Row %d and Column %d was clicked" % (row, column))
             item = self.tableWidget.item(row, column)
             if item != (None and ""):
                 try:
@@ -610,9 +576,6 @@ class Window(QMainWindow):
                     frameTime = int(itemFrame[2]) + int(itemFrame[1]) * 60 + int(itemFrame[0]) * 3600
                     elblFrames = self.elbl.text().split(":")
                     elblFrameTime = int(elblFrames[2]) + int(elblFrames[1]) * 60 + int(elblFrames[0]) * 3600
-                    # print("Elbl FT ", str(elblFrameTime))
-                    # print("FT ", str(frameTime))
-                    # print(frameTime)
                     self.mediaPlayer.setPosition(frameTime * 1000 + 1 * 60)
                 except:
                     self.errorLabel.setText("Some Video Error - Please Recheck Video Imported!")
@@ -660,12 +623,6 @@ class Window(QMainWindow):
     def volumeDown(self):
         self.mediaPlayer.setVolume(self.mediaPlayer.volume() - 10)
         print("Volume: " + str(self.mediaPlayer.volume()))
-
-    # def mouseMoveEvent(self, event):
-    # if event.buttons() == Qt.LeftButton:
-    #     self.move(event.globalPos() \- QPoint(self.frameGeometry().width() / 2, \
-    #                 self.frameGeometry().height() / 2))
-    #     event.accept()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
