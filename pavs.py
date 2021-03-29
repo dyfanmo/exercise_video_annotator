@@ -116,6 +116,41 @@ class ExportDBInputDialog(QDialog):
         self.override = state == QtCore.Qt.Checked
 
 
+class OpenVideoInputDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.userId = QLineEdit(self)
+        self.videoResultId = QLineEdit(self)
+        self.videoFilepath = ""
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        openButton = QPushButton("Choose...")
+        openButton.clicked.connect(self.openFile)
+
+        self.onlyInt = QIntValidator()
+        self.userId.setValidator(self.onlyInt)
+        self.videoResultId.setValidator(self.onlyInt)
+
+        layout = QFormLayout(self)
+        layout.addRow(QLabel("From S3 bucket"))
+        layout.addRow("User ID", self.userId)
+        layout.addRow("Video Result ID", self.videoResultId)
+        layout.addWidget(buttonBox)
+        layout.addRow(QLabel("From local files"))
+        layout.addWidget(openButton)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def getInputs(self):
+        return (self.userId.text(), self.videoResultId.text(), self.videoFilepath)
+
+    def openFile(self):
+        fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie", QDir.homePath())
+        self.videoFilepath = fileName
+        self.accept()
+
+
 class Window(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -144,7 +179,7 @@ class Window(QMainWindow):
         self.colNo = 0
         self.fName = ""
         self.fName2 = ""
-        self.fileNameExist = ""
+        self.video_file_path = ""
         self.dropDownName = ""
 
         self.model = QStandardItemModel()
@@ -344,16 +379,19 @@ class Window(QMainWindow):
         self.mediaPlayer.error.connect(self.handleError)
 
     def openFile(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie", QDir.homePath())
+        openVideoDialog = OpenVideoInputDialog(self)
+        if openVideoDialog.exec():
+            user_id, video_result_id, video_filepath = openVideoDialog.getInputs()
+            print(f"user_id: {user_id} | video_result_id: {video_result_id} | video_filepath: {video_filepath}")
+            self.userId = int(user_id) if user_id != "" else -1
+            self.videoResultId = int(video_result_id) if video_result_id != "" else -1
+            self.video_file_path = video_filepath
 
-        if fileName != "":
-            self.fileNameExist = fileName
-            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(fileName)))
-            self.playButton.setEnabled(True)
-        self.videopath = QUrl.fromLocalFile(fileName)
-        self.video_file_path = fileName
-        self.errorLabel.setText(fileName)
-        self.errorLabel.setStyleSheet("color: black")
+            if video_filepath != "":
+                self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(video_filepath)))
+                self.playButton.setEnabled(True)
+            self.errorLabel.setText(video_filepath)
+            self.errorLabel.setStyleSheet("color: black")
 
     def play(self):
         # self.is_playing_video = not self.is_playing_video
@@ -479,8 +517,8 @@ class Window(QMainWindow):
         return labels_df
 
     def exportCsv(self):
-        if self.fileNameExist:
-            self.fName = ((self.fileNameExist.rsplit("/", 1)[1]).rsplit(".", 1))[0]
+        if self.video_file_path:
+            self.fName = ((self.video_file_path.rsplit("/", 1)[1]).rsplit(".", 1))[0]
         path, _ = QFileDialog.getSaveFileName(
             self, "Save File", QDir.homePath() + "/" + self.fName + ".csv", "CSV Files(*.csv *.txt)"
         )
