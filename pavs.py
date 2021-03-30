@@ -41,7 +41,15 @@ import numpy as np
 import argparse
 import pandas as pd
 import tempfile
-from utils import convert_time_to_frame_num_df, add_labels_column, send_labels_to_api, download_video_from_s3
+from utils import (
+    convert_time_to_frame_num_df,
+    add_labels_column,
+    send_labels_to_api,
+    download_video_from_s3,
+    get_labels_from_api,
+    get_video_fps,
+    convert_frame_num_to_time,
+)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
@@ -367,11 +375,42 @@ class Window(QMainWindow):
             if self.video_file_path == "":
                 try:
                     self.video_file_path = download_video_from_s3(self.userId, self.videoResultId)
+                    fps = get_video_fps(self.video_file_path)
+                    self.populateRowsFromApi(self.userId, self.videoResultId, fps)
                 except:
                     showErrorDialog("Failed to download video from S3. Check that the video exists and try again.")
 
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.video_file_path)))
             self.playButton.setEnabled(True)
+
+    def populateRowsFromApi(self, user_id, video_result_id, fps):
+        self.clearTable()
+        labels = get_labels_from_api(user_id, video_result_id)
+        self.colNo = 0
+        for label in labels:
+            self.tableWidget.setItem(
+                self.rowNo, self.colNo, QTableWidgetItem(convert_frame_num_to_time(label["start_frame"], fps))
+            )
+            self.colNo += 1
+            self.tableWidget.setItem(
+                self.rowNo, self.colNo, QTableWidgetItem(convert_frame_num_to_time(label["end_frame"], fps))
+            )
+            self.colNo += 1
+            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["exercise"]))
+            self.colNo += 1
+            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["view"]))
+            self.colNo += 1
+            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(str(label["min_reps"])))
+            self.colNo += 1
+            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(str(label["reps"])))
+            self.colNo += 1
+            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["rules"]))
+            self.colNo += 1
+            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["reps_to_judge"]))
+            self.colNo += 1
+            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["notes"]))
+            self.rowNo += 1
+            self.colNo = 0
 
     def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:

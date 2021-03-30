@@ -1,5 +1,5 @@
 import cv2
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import pandas as pd
 import requests
@@ -20,14 +20,20 @@ def convert_time_to_seconds(time_string):
 def convert_time_to_frame_num(time_sting, video_path):
     fps = get_video_fps(video_path)
     seconds = convert_time_to_seconds(time_sting)
-    frame_num = fps * seconds
+    frame_num = int(fps * seconds)
     return frame_num
+
+
+def convert_frame_num_to_time(frame_number, fps):
+    """Converts a frame number to a HH:MM:SS string timestamp"""
+    seconds = frame_number / fps
+    return str(timedelta(seconds=round(seconds)))
 
 
 def get_video_fps(video_path):
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    return int(fps)
+    return fps
 
 
 def convert_time_to_frame_num_df(df, video_path):
@@ -56,7 +62,7 @@ def add_labels_column(df):
 def get_session(server):
     """Make session send requests with dev token"""
     sess = requests.session()
-    username = "dev@atlasai.co.uk"
+    username = "vlad@atlasai.co.uk"
     pw = "remote_2020"
     login_endpoint = server + "/auth/login"
     tokens = sess.post(login_endpoint, json={"username": username, "password": pw}).json()
@@ -80,12 +86,16 @@ def checked_value(dict, key, default_value):
         return default_value
 
 
+def get_server(user_id):
+    if user_id > 1000:
+        return "https://atlas-remote-prod.atlasaiapi.co.uk/api/v1"
+    return "https://atlas-remote-dev.atlasaiapi.co.uk/api/v1"
+
+
 def send_labels_to_api(user_id, video_result_id, override, labels_df):
     errors = []
     # determine server
-    server = "https://atlas-remote-dev.atlasaiapi.co.uk/api/v1"
-    if user_id > 1000:
-        server = "https://atlas-remote-prod.atlasaiapi.co.uk/api/v1"
+    server = get_server(user_id)
     # get token
     session = get_session(server)
     # Check VideoResult exists
@@ -103,7 +113,7 @@ def send_labels_to_api(user_id, video_result_id, override, labels_df):
             "reps": checked_value(label_row, "reps", 0),
             "min_reps": checked_value(label_row, "min_reps", 0),
             "notes": checked_value(label_row, "notes", ""),
-            "rules": checked_value(label_row, "rules", ""),
+            "rules": checked_value(label_row, "rule", ""),
             "reps_to_judge": checked_value(label_row, "reps_to_judge", ""),
             "start_frame": int(checked_value(label_row, "start_frame", 0)),
             "end_frame": int(checked_value(label_row, "end_frame", 0)),
@@ -140,3 +150,14 @@ def download_video_from_s3(user_id, video_result_id):
     local_fp = os.path.join(tempfile.gettempdir(), "atlas_labelling_full_video.ts")
     aws_download_file(aws_fp, local_fp=local_fp, bucket=bucket)
     return local_fp
+
+
+def get_labels_from_api(user_id, video_result_id):
+    """Get labels for the given video_result_id from the API"""
+    server = get_server(user_id)
+    session = get_session(server)
+
+    response = session.get(f"{server}/video_label/", json={"video_result_id": video_result_id})
+    if response.status_code == 200:
+        return response.json()
+    return []
