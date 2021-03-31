@@ -45,11 +45,14 @@ from utils import (
     convert_time_to_frame_num_df,
     add_labels_column,
     send_labels_to_api,
-    download_video_from_s3,
+    download_file_from_s3,
     get_labels_from_api,
     get_video_fps,
     convert_frame_num_to_time,
 )
+
+from atlas_utils.evaluation_framework.generate_report import generate_report
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
@@ -374,7 +377,7 @@ class Window(QMainWindow):
 
             if self.video_file_path == "":
                 try:
-                    self.video_file_path = download_video_from_s3(self.userId, self.videoResultId)
+                    self.video_file_path = download_file_from_s3(self.userId, self.videoResultId, "full_video.ts")
                     fps = get_video_fps(self.video_file_path)
                     self.populateRowsFromApi(self.userId, self.videoResultId, fps)
                 except:
@@ -550,8 +553,9 @@ class Window(QMainWindow):
             self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
 
     def exportAndSendLabelsToDb(self, user_id, video_result_id):
-        temp_csv_fp = os.path.join(tempfile.gettempdir(), "temp_labels.csv")
-        os.makedirs(tempfile.gettempdir(), exist_ok=True)
+        tmp_dir = os.path.join(tempfile.gettempdir(), "atlas_labelling_tool", str(video_result_id))
+        temp_csv_fp = os.path.join(tmp_dir, "full_video_labels.csv")
+        os.makedirs(tmp_dir, exist_ok=True)
 
         labels_df = self.saveToCsv(temp_csv_fp)
         errors = send_labels_to_api(user_id, video_result_id, labels_df)
@@ -601,8 +605,18 @@ class Window(QMainWindow):
         else:
             self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
         # get outcomes from S3
+        tmp_dir = os.path.join(tempfile.gettempdir(), "atlas_labelling_tool", str(self.videoResultId))
+        self.setupGenerateReport(self.userId, self.videoResultId, tmp_dir)
         # generate report locally
+        generate_report(tmp_dir, self.videoResultId)
         # upload report to S3
+
+    def setupGenerateReport(self, user_id, video_result_id, output_dir):
+        # determine .ts or .mp4. Convert if needed....
+        download_file_from_s3(user_id, video_result_id, "full_video.ts", os.path.join(output_dir, "full_video.ts"))
+        download_file_from_s3(
+            user_id, video_result_id, "pose_results.json", os.path.join(output_dir, "pose_results.json")
+        )
 
     def insertBaseRow(self):
         self.tableWidget.setColumnCount(9)  # , Start Time, End Time, TimeStamp

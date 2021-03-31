@@ -148,11 +148,12 @@ def send_labels_to_api(user_id, video_result_id, labels_df):
     return "\n\n".join(errors)
 
 
-def download_video_from_s3(user_id, video_result_id):
+def download_file_from_s3(user_id, video_result_id, filename, local_fp=""):
     """Download video from S3 and put it in tmp dir. Returns filepath to local video"""
-    aws_fp = f"{user_id}/{video_result_id}/full_video.ts"
+    aws_fp = f"{user_id}/{video_result_id}/{filename}"
     bucket = "atlas-remote-internal"
-    local_fp = os.path.join(tempfile.gettempdir(), "atlas_labelling_full_video.ts")
+    if local_fp == "":
+        local_fp = os.path.join(tempfile.gettempdir(), filename)
     aws_download_file(aws_fp, local_fp=local_fp, bucket=bucket)
     return local_fp
 
