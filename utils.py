@@ -92,16 +92,26 @@ def get_server(user_id):
     return "https://atlas-remote-dev.atlasaiapi.co.uk/api/v1"
 
 
-def send_labels_to_api(user_id, video_result_id, override, labels_df):
+def delete_existing_labels(server, session, video_result_id):
+    response = session.get(f"{server}/video_label/", json={"video_result_id": video_result_id})
+
+    for label in response.json():
+        session.delete(f"{server}/video_label/{label['id']}")
+
+
+def send_labels_to_api(user_id, video_result_id, labels_df):
     errors = []
-    # determine server
+
     server = get_server(user_id)
-    # get token
     session = get_session(server)
+
     # Check VideoResult exists
     response = session.get(f"{server}/video_result/{video_result_id}")
     if response.status_code != 200:
         return f"Video result with ID {video_result_id} doesn't exist."
+
+    delete_existing_labels(server, session, video_result_id)
+
     # iterate and post labels
     for (_, label_row) in labels_df.iterrows():
         name = checked_value(label_row, "label", get_random_string())
@@ -122,23 +132,18 @@ def send_labels_to_api(user_id, video_result_id, override, labels_df):
         # send a POST request
         response = session.post(f"{server}/video_label/", json=request_body)
         if response.status_code != 201:
-            if override:
-                # get video_label_id so we can PUT instead
-                response = session.get(
-                    f"{server}/video_label/by_name",
-                    json={
-                        "video_result_id": video_result_id,
-                        "name": name,
-                    },
-                )
-                video_label_id = response.json()["id"] if response.status_code == 200 else 0
-                response = session.put(f"{server}/video_label/{video_label_id}", json=request_body)
-                if response.status_code != 200:
-                    errors.append(
-                        f"Failed to modify existing label {name} with error: {response.json()['errors']['name']}"
-                    )
-            else:
-                errors.append(f"Failed to create label {name} with error: {response.json()['errors']['name']}")
+            # get video_label_id so we can PUT instead
+            response = session.get(
+                f"{server}/video_label/by_name",
+                json={
+                    "video_result_id": video_result_id,
+                    "name": name,
+                },
+            )
+            video_label_id = response.json()["id"] if response.status_code == 200 else 0
+            response = session.put(f"{server}/video_label/{video_label_id}", json=request_body)
+            if response.status_code != 200:
+                errors.append(f"Failed to modify existing label {name} with error: {response.json()['errors']['name']}")
     # return errors to display to user
     return "\n\n".join(errors)
 

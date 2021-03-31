@@ -99,8 +99,6 @@ class ExportDBInputDialog(QDialog):
 
         self.userId = QLineEdit(self)
         self.videoResultId = QLineEdit(self)
-        self.overrideLabels = QCheckBox("Overwrite existing labels, if any?", self)
-        self.overrideLabels.stateChanged.connect(self.clickBox)
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
 
         self.override = False
@@ -111,17 +109,13 @@ class ExportDBInputDialog(QDialog):
         layout = QFormLayout(self)
         layout.addRow("User ID", self.userId)
         layout.addRow("Video Result ID", self.videoResultId)
-        layout.addRow(self.overrideLabels)
         layout.addWidget(buttonBox)
 
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
     def getInputs(self):
-        return (self.userId.text(), self.videoResultId.text(), self.override)
-
-    def clickBox(self, state):
-        self.override = state == QtCore.Qt.Checked
+        return (self.userId.text(), self.videoResultId.text())
 
 
 class OpenVideoInputDialog(QDialog):
@@ -182,6 +176,8 @@ class Window(QMainWindow):
         self.fName2 = ""
         self.video_file_path = ""
         self.dropDownName = ""
+        self.userId = -1
+        self.videoResultId = -1
 
         self.model = QStandardItemModel()
 
@@ -228,6 +224,9 @@ class Window(QMainWindow):
 
         self.importButton = QPushButton("Import")
         self.importButton.clicked.connect(self.importCSV)
+
+        self.reportButton = QPushButton("Generate report")
+        self.reportButton.clicked.connect(self.generateReport)
 
         self.startTime = QLineEdit()
         self.startTime.setPlaceholderText("Start Time")
@@ -315,6 +314,7 @@ class Window(QMainWindow):
         feats.addWidget(self.exportToCsvButton)
         feats.addWidget(self.exportToDbButton)
         feats.addWidget(self.importButton)
+        feats.addWidget(self.reportButton)
 
         layout2 = QVBoxLayout()
         layout2.addWidget(self.tableWidget)
@@ -540,22 +540,25 @@ class Window(QMainWindow):
     def exportDb(self):
         dialog = ExportDBInputDialog()
         if dialog.exec():
-            uid, vrid, override = dialog.getInputs()
+            uid, vrid = dialog.getInputs()
             if uid == "" or vrid == "":
                 showDialog("Both user ID and video result ID are required.", success=False)
                 return
 
-            user_id = int(uid)
-            video_result_id = int(vrid)
-            temp_csv_fp = os.path.join(tempfile.gettempdir(), "temp_labels.csv")
-            os.makedirs(tempfile.gettempdir(), exist_ok=True)
+            self.userId = int(uid)
+            self.videoResultId = int(vrid)
+            self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
 
-            labels_df = self.saveToCsv(temp_csv_fp)
-            errors = send_labels_to_api(user_id, video_result_id, override, labels_df)
-            if errors != "":
-                showDialog(errors, success=False)
-            else:
-                showDialog("Labels uploaded successfully!")
+    def exportAndSendLabelsToDb(self, user_id, video_result_id):
+        temp_csv_fp = os.path.join(tempfile.gettempdir(), "temp_labels.csv")
+        os.makedirs(tempfile.gettempdir(), exist_ok=True)
+
+        labels_df = self.saveToCsv(temp_csv_fp)
+        errors = send_labels_to_api(user_id, video_result_id, labels_df)
+        if errors != "":
+            showDialog(errors, success=False)
+        else:
+            showDialog("Labels uploaded successfully!")
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
@@ -589,6 +592,17 @@ class Window(QMainWindow):
                             self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[8]))
                         self.colNo = 0
                         self.rowNo += 1
+
+    def generateReport(self):
+        # if we have ids, push labels
+        if self.userId < 0 or self.videoResultId < 0:
+            self.exportDb()
+        # else ask for ids and then push labels
+        else:
+            self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
+        # get outcomes from S3
+        # generate report locally
+        # upload report to S3
 
     def insertBaseRow(self):
         self.tableWidget.setColumnCount(9)  # , Start Time, End Time, TimeStamp
