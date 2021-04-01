@@ -7,7 +7,7 @@ import string
 import random
 import tempfile
 
-from atlas_utils.aws_utils import aws_download_file
+from atlas_utils.aws_utils import aws_download_file, aws_upload_file
 
 
 def convert_time_to_seconds(time_string):
@@ -149,13 +149,20 @@ def send_labels_to_api(user_id, video_result_id, labels_df):
 
 
 def download_file_from_s3(user_id, video_result_id, filename, local_fp=""):
-    """Download video from S3 and put it in tmp dir. Returns filepath to local video"""
+    """Download file from S3 and put it in tmp dir. Returns filepath to local file"""
     aws_fp = f"{user_id}/{video_result_id}/{filename}"
     bucket = "atlas-remote-internal"
     if local_fp == "":
         local_fp = os.path.join(tempfile.gettempdir(), filename)
     aws_download_file(aws_fp, local_fp=local_fp, bucket=bucket)
     return local_fp
+
+
+def upload_file_to_s3(user_id, video_result_id, filename):
+    """Upload file to S3"""
+    object_name = f"{user_id}/{video_result_id}/{os.path.basename(filename)}"
+    bucket = "atlas-remote-internal"
+    aws_upload_file(filename, bucket=bucket, object_name=object_name)
 
 
 def get_labels_from_api(user_id, video_result_id):

@@ -51,6 +51,7 @@ from utils import (
     get_labels_from_api,
     get_video_fps,
     convert_frame_num_to_time,
+    upload_file_to_s3,
 )
 
 from atlas_utils.evaluation_framework.generate_report import generate_report
@@ -618,10 +619,11 @@ class Window(QMainWindow):
             # generate report locally
             pdf_fp = generate_report(self.tmpDir, str(self.videoResultId), output_pdf_dir=self.tmpDir)
             # upload report to S3
-            print(f"Report at: {pdf_fp}")
-
+            upload_file_to_s3(self.userId, self.videoResultId, pdf_fp)
+            showDialog(f"Report generated at: {pdf_fp} and uploaded to S3!")
         except Exception as e:
             print(f"ERROR: {e}")
+            showDialog(str(e), success=False)
         finally:
             self.reportButton.setDisabled(False)
 
