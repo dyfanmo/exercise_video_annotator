@@ -41,6 +41,8 @@ import numpy as np
 import argparse
 import pandas as pd
 import tempfile
+import subprocess
+import shutil
 from utils import (
     convert_time_to_frame_num_df,
     add_labels_column,
@@ -52,6 +54,7 @@ from utils import (
 )
 
 from atlas_utils.evaluation_framework.generate_report import generate_report
+from atlas_utils.vid_utils import vid_to_frames
 
 
 parser = argparse.ArgumentParser()
@@ -181,6 +184,7 @@ class Window(QMainWindow):
         self.dropDownName = ""
         self.userId = -1
         self.videoResultId = -1
+        self.tmpDir = os.path.join(tempfile.gettempdir(), "atlas_labelling_tool")
 
         self.model = QStandardItemModel()
 
@@ -553,7 +557,7 @@ class Window(QMainWindow):
             self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
 
     def exportAndSendLabelsToDb(self, user_id, video_result_id):
-        tmp_dir = os.path.join(tempfile.gettempdir(), "atlas_labelling_tool", str(video_result_id))
+        tmp_dir = os.path.join(self.tmpDir, str(video_result_id))
         temp_csv_fp = os.path.join(tmp_dir, "full_video_labels.csv")
         os.makedirs(tmp_dir, exist_ok=True)
 
@@ -598,25 +602,41 @@ class Window(QMainWindow):
                         self.rowNo += 1
 
     def generateReport(self):
-        # if we have ids, push labels
-        if self.userId < 0 or self.videoResultId < 0:
-            self.exportDb()
-        # else ask for ids and then push labels
-        else:
-            self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
-        # get outcomes from S3
-        tmp_dir = os.path.join(tempfile.gettempdir(), "atlas_labelling_tool", str(self.videoResultId))
-        self.setupGenerateReport(self.userId, self.videoResultId, tmp_dir)
-        # generate report locally
-        generate_report(tmp_dir, self.videoResultId)
-        # upload report to S3
+        shutil.rmtree(self.tmpDir)
+        os.makedirs(self.tmpDir)
+        self.reportButton.setDisabled(True)
+        try:
+            # if we have ids, push labels
+            if self.userId < 0 or self.videoResultId < 0:
+                self.exportDb()
+            # else ask for ids and then push labels
+            else:
+                self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
+            # get outcomes from S3
+            tmp_dir = os.path.join(self.tmpDir, str(self.videoResultId))
+            self.setupGenerateReport(self.userId, self.videoResultId, tmp_dir)
+            # generate report locally
+            pdf_fp = generate_report(self.tmpDir, str(self.videoResultId), output_pdf_dir=self.tmpDir)
+            # upload report to S3
+            print(f"Report at: {pdf_fp}")
+
+        except Exception as e:
+            print(f"ERROR: {e}")
+        finally:
+            self.reportButton.setDisabled(False)
 
     def setupGenerateReport(self, user_id, video_result_id, output_dir):
         # determine .ts or .mp4. Convert if needed....
-        download_file_from_s3(user_id, video_result_id, "full_video.ts", os.path.join(output_dir, "full_video.ts"))
+        video_ts_path = os.path.join(output_dir, "full_video.ts")
+        video_mp4_path = video_ts_path.replace(".ts", ".mp4")
+        video_frames_path = os.path.join(output_dir, "full_video_frames")
+        download_file_from_s3(user_id, video_result_id, "full_video.ts", video_ts_path)
         download_file_from_s3(
             user_id, video_result_id, "pose_results.json", os.path.join(output_dir, "pose_results.json")
         )
+
+        subprocess.run(["ffmpeg", "-i", video_ts_path, video_mp4_path])
+        vid_to_frames(video_ts_path, video_frames_path)
 
     def insertBaseRow(self):
         self.tableWidget.setColumnCount(9)  # , Start Time, End Time, TimeStamp
