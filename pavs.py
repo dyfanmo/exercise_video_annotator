@@ -43,6 +43,7 @@ import pandas as pd
 import tempfile
 import subprocess
 import shutil
+import traceback
 from utils import (
     convert_time_to_frame_num_df,
     add_labels_column,
@@ -396,29 +397,17 @@ class Window(QMainWindow):
         labels = get_labels_from_api(user_id, video_result_id)
         self.colNo = 0
         for label in labels:
-            self.tableWidget.setItem(
-                self.rowNo, self.colNo, QTableWidgetItem(convert_frame_num_to_time(label["start_frame"], fps))
-            )
-            self.colNo += 1
-            self.tableWidget.setItem(
-                self.rowNo, self.colNo, QTableWidgetItem(convert_frame_num_to_time(label["end_frame"], fps))
-            )
-            self.colNo += 1
-            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["exercise"]))
-            self.colNo += 1
-            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["view"]))
-            self.colNo += 1
-            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(str(label["min_reps"])))
-            self.colNo += 1
-            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(str(label["reps"])))
-            self.colNo += 1
-            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["rules"]))
-            self.colNo += 1
-            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["reps_to_judge"]))
-            self.colNo += 1
-            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(label["notes"]))
-            self.rowNo += 1
+            self.addValueToCurrentCell(convert_frame_num_to_time(label["start_frame"], fps))
+            self.addValueToCurrentCell(convert_frame_num_to_time(label["end_frame"], fps))
+            self.addValueToCurrentCell(label["exercise"])
+            self.addValueToCurrentCell(label["view"])
+            self.addValueToCurrentCell(str(label["min_reps"]))
+            self.addValueToCurrentCell(str(label["reps"]))
+            self.addValueToCurrentCell(label["rules"])
+            self.addValueToCurrentCell(label["reps_to_judge"])
+            self.addValueToCurrentCell(label["notes"])
             self.colNo = 0
+            self.rowNo += 1
 
     def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
@@ -450,21 +439,14 @@ class Window(QMainWindow):
         self.repCount.setText(self.lbl.text())
 
     def next(self):
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.startTime.text()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.endTime.text()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.iLabel.currentText()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.orientation.currentText()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.minReps.text()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.maxReps.text()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.rules.currentText()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.repsToJudge.text()))
+        self.addValueToCurrentCell(self.startTime.text())
+        self.addValueToCurrentCell(self.endTime.text())
+        self.addValueToCurrentCell(self.iLabel.currentText())
+        self.addValueToCurrentCell(self.orientation.currentText())
+        self.addValueToCurrentCell(self.minReps.text())
+        self.addValueToCurrentCell(self.maxReps.text())
+        self.addValueToCurrentCell(self.rules.currentText())
+        self.addValueToCurrentCell(self.repsToJudge.text())
         self.colNo = 0
         self.rowNo += 1
 
@@ -483,7 +465,6 @@ class Window(QMainWindow):
         while self.tableWidget.rowCount() > 0:
             self.tableWidget.removeRow(0)
         self.insertBaseRow()
-        print("Clearing")
 
     def copyRow(self):
         columnCount = self.tableWidget.columnCount()
@@ -546,16 +527,17 @@ class Window(QMainWindow):
             self.saveToCsv(path)
 
     def exportDb(self):
-        dialog = ExportDBInputDialog()
-        if dialog.exec():
-            uid, vrid = dialog.getInputs()
-            if uid == "" or vrid == "":
-                showDialog("Both user ID and video result ID are required.", success=False)
-                return
+        if self.userId < 0 or self.videoResultId < 0:
+            dialog = ExportDBInputDialog()
+            if dialog.exec():
+                uid, vrid = dialog.getInputs()
+                if uid == "" or vrid == "":
+                    showDialog("Both user ID and video result ID are required.", success=False)
+                    return
 
-            self.userId = int(uid)
-            self.videoResultId = int(vrid)
-            self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
+                self.userId = int(uid)
+                self.videoResultId = int(vrid)
+        self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
 
     def exportAndSendLabelsToDb(self, user_id, video_result_id):
         tmp_dir = os.path.join(self.tmpDir, str(video_result_id))
@@ -569,6 +551,10 @@ class Window(QMainWindow):
         else:
             showDialog("Labels uploaded successfully!")
 
+    def addValueToCurrentCell(self, value):
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(value))
+        self.colNo += 1
+
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
         print(path)
@@ -581,23 +567,9 @@ class Window(QMainWindow):
                     if i == 0:
                         continue
                     else:
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[0]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[1]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[2]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[3]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[4]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[5]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[6]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[7]))
+                        for i in range(8):
+                            self.addValueToCurrentCell(row[i])
                         if len(row) == 9:
-                            self.colNo += 1
                             self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[8]))
                         self.colNo = 0
                         self.rowNo += 1
@@ -607,28 +579,23 @@ class Window(QMainWindow):
         os.makedirs(self.tmpDir)
         self.reportButton.setDisabled(True)
         try:
-            # if we have ids, push labels
             if self.userId < 0 or self.videoResultId < 0:
                 self.exportDb()
-            # else ask for ids and then push labels
             else:
                 self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
-            # get outcomes from S3
+
             tmp_dir = os.path.join(self.tmpDir, str(self.videoResultId))
             self.setupGenerateReport(self.userId, self.videoResultId, tmp_dir)
-            # generate report locally
+
             pdf_fp = generate_report(self.tmpDir, str(self.videoResultId), output_pdf_dir=self.tmpDir)
-            # upload report to S3
             upload_file_to_s3(self.userId, self.videoResultId, pdf_fp)
             showDialog(f"Report generated at: {pdf_fp} and uploaded to S3!")
-        except Exception as e:
-            print(f"ERROR: {e}")
-            showDialog(str(e), success=False)
+        except Exception:
+            showDialog(str(traceback.format_exc()), success=False)
         finally:
             self.reportButton.setDisabled(False)
 
     def setupGenerateReport(self, user_id, video_result_id, output_dir):
-        # determine .ts or .mp4. Convert if needed....
         video_ts_path = os.path.join(output_dir, "full_video.ts")
         video_mp4_path = video_ts_path.replace(".ts", ".mp4")
         video_frames_path = os.path.join(output_dir, "full_video_frames")
