@@ -41,7 +41,23 @@ import numpy as np
 import argparse
 import pandas as pd
 import tempfile
-from utils import convert_time_to_frame_num_df, add_labels_column, send_labels_to_api
+import subprocess
+import shutil
+import traceback
+from utils import (
+    convert_time_to_frame_num_df,
+    add_labels_column,
+    send_labels_to_api,
+    download_file_from_s3,
+    get_labels_from_api,
+    get_video_fps,
+    convert_frame_num_to_time,
+    upload_file_to_s3,
+)
+
+from atlas_utils.evaluation_framework.generate_report import generate_report
+from atlas_utils.vid_utils import vid_to_frames
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
@@ -91,8 +107,6 @@ class ExportDBInputDialog(QDialog):
 
         self.userId = QLineEdit(self)
         self.videoResultId = QLineEdit(self)
-        self.overrideLabels = QCheckBox("Overwrite existing labels, if any?", self)
-        self.overrideLabels.stateChanged.connect(self.clickBox)
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
 
         self.override = False
@@ -103,17 +117,48 @@ class ExportDBInputDialog(QDialog):
         layout = QFormLayout(self)
         layout.addRow("User ID", self.userId)
         layout.addRow("Video Result ID", self.videoResultId)
-        layout.addRow(self.overrideLabels)
         layout.addWidget(buttonBox)
 
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
     def getInputs(self):
-        return (self.userId.text(), self.videoResultId.text(), self.override)
+        return (self.userId.text(), self.videoResultId.text())
 
-    def clickBox(self, state):
-        self.override = state == QtCore.Qt.Checked
+
+class OpenVideoInputDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.userId = QLineEdit(self)
+        self.videoResultId = QLineEdit(self)
+        self.videoFilepath = ""
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        openButton = QPushButton("Choose...")
+        openButton.clicked.connect(self.openFile)
+
+        self.onlyInt = QIntValidator()
+        self.userId.setValidator(self.onlyInt)
+        self.videoResultId.setValidator(self.onlyInt)
+
+        layout = QFormLayout(self)
+        layout.addRow(QLabel("From S3 bucket"))
+        layout.addRow("User ID", self.userId)
+        layout.addRow("Video Result ID", self.videoResultId)
+        layout.addWidget(buttonBox)
+        layout.addRow(QLabel("From local files"))
+        layout.addWidget(openButton)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def getInputs(self):
+        return (self.userId.text(), self.videoResultId.text(), self.videoFilepath)
+
+    def openFile(self):
+        fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie", QDir.homePath())
+        self.videoFilepath = fileName
+        self.accept()
 
 
 class Window(QMainWindow):
@@ -121,17 +166,10 @@ class Window(QMainWindow):
         super().__init__()
 
         self.title = "Exercise Video Annotator"
-        # self.top = 100
-        # self.left = 100
-        # self.width = 300
-        # self.height = 400
-        # self.setWindowState = "Qt.WindowMaximized"
-        iconName = "home.png"
         self.InitWindow()
 
     def InitWindow(self):
         self.setWindowTitle(self.title)
-        # self.setWindowIcon(QtGui.QIcon(iconName))
         self.setWindowState(QtCore.Qt.WindowMaximized)
 
         self.UiComponents()
@@ -144,8 +182,11 @@ class Window(QMainWindow):
         self.colNo = 0
         self.fName = ""
         self.fName2 = ""
-        self.fileNameExist = ""
+        self.video_file_path = ""
         self.dropDownName = ""
+        self.userId = -1
+        self.videoResultId = -1
+        self.tmpDir = os.path.join(tempfile.gettempdir(), "atlas_labelling_tool")
 
         self.model = QStandardItemModel()
 
@@ -169,12 +210,10 @@ class Window(QMainWindow):
         self.lbl = QLabel("00:00:00")
         self.lbl.setFixedWidth(60)
         self.lbl.setUpdatesEnabled(True)
-        # self.lbl.setStyleSheet(stylesheet(self))
 
         self.elbl = QLabel("00:00:00")
         self.elbl.setFixedWidth(60)
         self.elbl.setUpdatesEnabled(True)
-        # self.elbl.setStyleSheet(stylesheet(self))
 
         self.playbackIndicator = QLabel("X" + str(self.mediaPlayer.playbackRate()))
         self.playbackIndicator.setFixedWidth(60)
@@ -195,8 +234,8 @@ class Window(QMainWindow):
         self.importButton = QPushButton("Import")
         self.importButton.clicked.connect(self.importCSV)
 
-        # self.ctr = QLineEdit()
-        # self.ctr.setPlaceholderText("Extra")
+        self.reportButton = QPushButton("Generate report")
+        self.reportButton.clicked.connect(self.generateReport)
 
         self.startTime = QLineEdit()
         self.startTime.setPlaceholderText("Start Time")
@@ -233,9 +272,6 @@ class Window(QMainWindow):
         self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
 
-        # self.iLabel = QLineEdit()
-        # self.iLabel.setPlaceholderText("Label")
-
         self.positionSlider = QSlider(Qt.Horizontal)
         self.positionSlider.setRange(0, 100)
         self.positionSlider.sliderMoved.connect(self.setPosition)
@@ -251,7 +287,6 @@ class Window(QMainWindow):
         plotBox = QHBoxLayout()
 
         controlLayout = QHBoxLayout()
-        # controlLayout.setContentsMargins(0, 0, 0, 0)
         controlLayout.addWidget(openButton)
         controlLayout.addWidget(self.playButton)
         controlLayout.addWidget(self.lbl)
@@ -263,11 +298,8 @@ class Window(QMainWindow):
         self.setCentralWidget(wid)
 
         # Left Layout{
-        # layout.addWidget(self.videoWidget)
-
         layout = QVBoxLayout()
         layout.addWidget(self.videoWidget, 1)
-        # layout.addLayout(self.grid_root)
         layout.addLayout(controlLayout)
         layout.addWidget(self.errorLabel)
 
@@ -285,25 +317,22 @@ class Window(QMainWindow):
         inputFields.addWidget(self.rules, 1)
         inputFields.addWidget(self.repsToJudge, 1)
 
-        # inputFields.addWidget(self.ctr)
-
         feats = QHBoxLayout()
         feats.addWidget(self.nextButton)
         feats.addWidget(self.delButton)
         feats.addWidget(self.exportToCsvButton)
         feats.addWidget(self.exportToDbButton)
         feats.addWidget(self.importButton)
+        feats.addWidget(self.reportButton)
 
         layout2 = QVBoxLayout()
         layout2.addWidget(self.tableWidget)
         layout2.addLayout(inputFields, 1)
         layout2.addLayout(feats, 2)
-        # layout2.addWidget(self.nextButton)
         # }
 
         plotBox.addLayout(layout2, 2)
 
-        # self.setLayout(layout)
         wid.setLayout(plotBox)
 
         self.shortcut = QShortcut(QKeySequence("["), self)
@@ -344,25 +373,47 @@ class Window(QMainWindow):
         self.mediaPlayer.error.connect(self.handleError)
 
     def openFile(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie", QDir.homePath())
+        openVideoDialog = OpenVideoInputDialog(self)
+        if openVideoDialog.exec():
+            user_id, video_result_id, video_filepath = openVideoDialog.getInputs()
 
-        if fileName != "":
-            self.fileNameExist = fileName
-            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(fileName)))
+            self.userId = int(user_id) if user_id != "" else -1
+            self.videoResultId = int(video_result_id) if video_result_id != "" else -1
+            self.video_file_path = video_filepath
+
+            if self.video_file_path == "":
+                try:
+                    self.video_file_path = download_file_from_s3(self.userId, self.videoResultId, "full_video.ts")
+                    fps = get_video_fps(self.video_file_path)
+                    self.populateRowsFromApi(self.userId, self.videoResultId, fps)
+                except:
+                    showErrorDialog("Failed to download video from S3. Check that the video exists and try again.")
+
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.video_file_path)))
             self.playButton.setEnabled(True)
-        self.videopath = QUrl.fromLocalFile(fileName)
-        self.video_file_path = fileName
-        self.errorLabel.setText(fileName)
-        self.errorLabel.setStyleSheet("color: black")
+
+    def populateRowsFromApi(self, user_id, video_result_id, fps):
+        self.clearTable()
+        labels = get_labels_from_api(user_id, video_result_id)
+        self.colNo = 0
+        for label in labels:
+            self.addValueToCurrentCell(convert_frame_num_to_time(label["start_frame"], fps))
+            self.addValueToCurrentCell(convert_frame_num_to_time(label["end_frame"], fps))
+            self.addValueToCurrentCell(label["exercise"])
+            self.addValueToCurrentCell(label["view"])
+            self.addValueToCurrentCell(str(label["min_reps"]))
+            self.addValueToCurrentCell(str(label["reps"]))
+            self.addValueToCurrentCell(label["rules"])
+            self.addValueToCurrentCell(label["reps_to_judge"])
+            self.addValueToCurrentCell(label["notes"])
+            self.colNo = 0
+            self.rowNo += 1
 
     def play(self):
-        # self.is_playing_video = not self.is_playing_video
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
         else:
             self.mediaPlayer.play()
-            # self._play_video()
-            # self.errorLabel.setText("Start: " + " -- " + " End:")
 
     def _play_video(self):
         if self.is_playing_video and self.video_fps:
@@ -388,29 +439,18 @@ class Window(QMainWindow):
         self.repCount.setText(self.lbl.text())
 
     def next(self):
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.startTime.text()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.endTime.text()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.iLabel.currentText()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.orientation.currentText()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.minReps.text()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.maxReps.text()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.rules.currentText()))
-        self.colNo += 1
-        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(self.repsToJudge.text()))
+        self.addValueToCurrentCell(self.startTime.text())
+        self.addValueToCurrentCell(self.endTime.text())
+        self.addValueToCurrentCell(self.iLabel.currentText())
+        self.addValueToCurrentCell(self.orientation.currentText())
+        self.addValueToCurrentCell(self.minReps.text())
+        self.addValueToCurrentCell(self.maxReps.text())
+        self.addValueToCurrentCell(self.rules.currentText())
+        self.addValueToCurrentCell(self.repsToJudge.text())
         self.colNo = 0
         self.rowNo += 1
 
-        # print(self.ctr.text(), self.startTime.text(), self.iLabel.text(), self.rowNo, self.colNo)
-        # print(self.iLabel.currentIndex())
-
     def delete(self):
-        # print("delete")
         index_list = []
         for model_index in self.tableWidget.selectionModel().selectedRows():
             index = QtCore.QPersistentModelIndex(model_index)
@@ -425,7 +465,6 @@ class Window(QMainWindow):
         while self.tableWidget.rowCount() > 0:
             self.tableWidget.removeRow(0)
         self.insertBaseRow()
-        print("Clearing")
 
     def copyRow(self):
         columnCount = self.tableWidget.columnCount()
@@ -479,8 +518,8 @@ class Window(QMainWindow):
         return labels_df
 
     def exportCsv(self):
-        if self.fileNameExist:
-            self.fName = ((self.fileNameExist.rsplit("/", 1)[1]).rsplit(".", 1))[0]
+        if self.video_file_path:
+            self.fName = ((self.video_file_path.rsplit("/", 1)[1]).rsplit(".", 1))[0]
         path, _ = QFileDialog.getSaveFileName(
             self, "Save File", QDir.homePath() + "/" + self.fName + ".csv", "CSV Files(*.csv *.txt)"
         )
@@ -488,24 +527,33 @@ class Window(QMainWindow):
             self.saveToCsv(path)
 
     def exportDb(self):
-        dialog = ExportDBInputDialog()
-        if dialog.exec():
-            uid, vrid, override = dialog.getInputs()
-            if uid == "" or vrid == "":
-                showDialog("Both user ID and video result ID are required.", success=False)
-                return
+        if self.userId < 0 or self.videoResultId < 0:
+            dialog = ExportDBInputDialog()
+            if dialog.exec():
+                uid, vrid = dialog.getInputs()
+                if uid == "" or vrid == "":
+                    showDialog("Both user ID and video result ID are required.", success=False)
+                    return
 
-            user_id = int(uid)
-            video_result_id = int(vrid)
-            temp_csv_fp = os.path.join(tempfile.gettempdir(), "temp_labels.csv")
-            os.makedirs(tempfile.gettempdir(), exist_ok=True)
+                self.userId = int(uid)
+                self.videoResultId = int(vrid)
+        self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
 
-            labels_df = self.saveToCsv(temp_csv_fp)
-            errors = send_labels_to_api(user_id, video_result_id, override, labels_df)
-            if errors != "":
-                showDialog(errors, success=False)
-            else:
-                showDialog("Labels uploaded successfully!")
+    def exportAndSendLabelsToDb(self, user_id, video_result_id):
+        tmp_dir = os.path.join(self.tmpDir, str(video_result_id))
+        temp_csv_fp = os.path.join(tmp_dir, "full_video_labels.csv")
+        os.makedirs(tmp_dir, exist_ok=True)
+
+        labels_df = self.saveToCsv(temp_csv_fp)
+        errors = send_labels_to_api(user_id, video_result_id, labels_df)
+        if errors != "":
+            showDialog(errors, success=False)
+        else:
+            showDialog("Labels uploaded successfully!")
+
+    def addValueToCurrentCell(self, value):
+        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(value))
+        self.colNo += 1
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
@@ -515,33 +563,49 @@ class Window(QMainWindow):
             with open(path, "r") as stream:
                 print("loading", path)
                 reader = csv.reader(stream)
-                # reader = csv.reader(stream, delimiter=';', quoting=csv.QUOTE_ALL)
-                # reader = csv.reader(stream, delimiter=';', quoting=csv.QUOTE_ALL)
-                # for row in reader:
                 for i, row in enumerate(reader):
                     if i == 0:
                         continue
                     else:
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[0]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[1]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[2]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[3]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[4]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[5]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[6]))
-                        self.colNo += 1
-                        self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[7]))
+                        for i in range(8):
+                            self.addValueToCurrentCell(row[i])
                         if len(row) == 9:
-                            self.colNo += 1
                             self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[8]))
                         self.colNo = 0
                         self.rowNo += 1
+
+    def generateReport(self):
+        shutil.rmtree(self.tmpDir)
+        os.makedirs(self.tmpDir)
+        self.reportButton.setDisabled(True)
+        try:
+            if self.userId < 0 or self.videoResultId < 0:
+                self.exportDb()
+            else:
+                self.exportAndSendLabelsToDb(self.userId, self.videoResultId)
+
+            tmp_dir = os.path.join(self.tmpDir, str(self.videoResultId))
+            self.setupGenerateReport(self.userId, self.videoResultId, tmp_dir)
+
+            pdf_fp = generate_report(self.tmpDir, str(self.videoResultId), output_pdf_dir=self.tmpDir)
+            upload_file_to_s3(self.userId, self.videoResultId, pdf_fp)
+            showDialog(f"Report generated at: {pdf_fp} and uploaded to S3!")
+        except Exception:
+            showDialog(str(traceback.format_exc()), success=False)
+        finally:
+            self.reportButton.setDisabled(False)
+
+    def setupGenerateReport(self, user_id, video_result_id, output_dir):
+        video_ts_path = os.path.join(output_dir, "full_video.ts")
+        video_mp4_path = video_ts_path.replace(".ts", ".mp4")
+        video_frames_path = os.path.join(output_dir, "full_video_frames")
+        download_file_from_s3(user_id, video_result_id, "full_video.ts", video_ts_path)
+        download_file_from_s3(
+            user_id, video_result_id, "pose_results.json", os.path.join(output_dir, "pose_results.json")
+        )
+
+        subprocess.run(["ffmpeg", "-i", video_ts_path, video_mp4_path])
+        vid_to_frames(video_ts_path, video_frames_path)
 
     def insertBaseRow(self):
         self.tableWidget.setColumnCount(9)  # , Start Time, End Time, TimeStamp
@@ -560,7 +624,6 @@ class Window(QMainWindow):
 
     def checkTableFrame(self, row, column):
         if (row > 0) and (column < 2):
-            # print("Row %d and Column %d was clicked" % (row, column))
             item = self.tableWidget.item(row, column)
             if item != (None and ""):
                 try:
@@ -569,9 +632,6 @@ class Window(QMainWindow):
                     frameTime = int(itemFrame[2]) + int(itemFrame[1]) * 60 + int(itemFrame[0]) * 3600
                     elblFrames = self.elbl.text().split(":")
                     elblFrameTime = int(elblFrames[2]) + int(elblFrames[1]) * 60 + int(elblFrames[0]) * 3600
-                    # print("Elbl FT ", str(elblFrameTime))
-                    # print("FT ", str(frameTime))
-                    # print(frameTime)
                     self.mediaPlayer.setPosition(frameTime * 1000 + 1 * 60)
                 except:
                     self.errorLabel.setText("Some Video Error - Please Recheck Video Imported!")
@@ -619,12 +679,6 @@ class Window(QMainWindow):
     def volumeDown(self):
         self.mediaPlayer.setVolume(self.mediaPlayer.volume() - 10)
         print("Volume: " + str(self.mediaPlayer.volume()))
-
-    # def mouseMoveEvent(self, event):
-    # if event.buttons() == Qt.LeftButton:
-    #     self.move(event.globalPos() \- QPoint(self.frameGeometry().width() / 2, \
-    #                 self.frameGeometry().height() / 2))
-    #     event.accept()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():

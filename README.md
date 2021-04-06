@@ -5,34 +5,24 @@ Annotate videos in common formats(mp4, avi, mkv, wav, mp3)
 
 The table in the exercise video annotator is used to input and store the labels for each exercise. The data in the table can be exported and imported into a CSV File.  The data is then transformed before exporting, converting the times to frame number and generate unique labels for each exercise.
 
-![example](https://github.com/atlas-fitness/exercise_video_annotator/blob/mo/EVAL0011/Examples/example.png)
+![example](Examples/example.png)
 
 ## Installation
  ### Windows
- Run [Required software for Windows/K-Lite_Codec_Pack_1532_Basic.exe](https://github.com/dyfanmo/exercise_video_annotator/blob/main/Required%20software%20for%20Windows/K-Lite_Codec_Pack_1532_Basic.exe) file to support video
+ Run [Required software for Windows/K-Lite_Codec_Pack_1532_Basic.exe](Required%20software%20for%20Windows/K-Lite_Codec_Pack_1532_Basic.exe) file to support video
   ```
-     pip install numpy
-     pip install PyQt5
-    
+     pip install -r requirements    
 ```
 
-
- ### Linux/Ubuntu
+ ### Linux/Ubuntu/MacOS
   ```
-     pip install numpy
-     sudo apt-get install python3-pyqt5
-```
- ### MacOs
-   ```
-     pip install numpy
-     brew install pyqt
+     pip install -r requirements    
 ```
  
 ## Usage
    * Running the annotator
  ```
      python pavs.py
-
 ```
 
 ## Shortcuts
