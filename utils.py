@@ -8,6 +8,7 @@ import random
 import tempfile
 
 from atlas_utils.aws_utils import aws_download_file, aws_upload_file
+from atlas_utils.vid_utils import get_video_fps
 
 
 def convert_time_to_seconds(time_string):
@@ -28,12 +29,6 @@ def convert_frame_num_to_time(frame_number, fps):
     """Converts a frame number to a HH:MM:SS string timestamp"""
     seconds = frame_number / fps
     return str(timedelta(seconds=round(seconds)))
-
-
-def get_video_fps(video_path):
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    return fps
 
 
 def convert_time_to_frame_num_df(df, video_path):
