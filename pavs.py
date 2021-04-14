@@ -575,8 +575,8 @@ class Window(QMainWindow):
                         self.rowNo += 1
 
     def generateReport(self):
-        shutil.rmtree(self.tmpDir)
-        os.makedirs(self.tmpDir)
+        shutil.rmtree(self.tmpDir, ignore_errors=True)
+        os.makedirs(self.tmpDir, exist_ok=True)
         self.reportButton.setDisabled(True)
         try:
             if self.userId < 0 or self.videoResultId < 0:
