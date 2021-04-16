@@ -65,7 +65,7 @@ parser.add_argument("--rules_path", type=str, default="config/rules.txt")
 args = parser.parse_args()
 
 audio_extensions = [".wav", ".mp3"]
-video_extensions = [".avi", ".mp4", ".mkv"]
+video_extensions = [".avi", ".mp4", ".mkv", ".ts"]
 
 
 def showErrorDialog(message):
@@ -597,14 +597,12 @@ class Window(QMainWindow):
 
     def setupGenerateReport(self, user_id, video_result_id, output_dir):
         video_ts_path = os.path.join(output_dir, "full_video.ts")
-        video_mp4_path = video_ts_path.replace(".ts", ".mp4")
         video_frames_path = os.path.join(output_dir, "full_video_frames")
         download_file_from_s3(user_id, video_result_id, "full_video.ts", video_ts_path)
         download_file_from_s3(
             user_id, video_result_id, "pose_results.json", os.path.join(output_dir, "pose_results.json")
         )
 
-        subprocess.run(["ffmpeg", "-i", video_ts_path, video_mp4_path])
         vid_to_frames(video_ts_path, video_frames_path)
 
     def insertBaseRow(self):
