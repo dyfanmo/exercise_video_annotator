@@ -231,7 +231,7 @@ class Window(QMainWindow):
         self.exportToDbButton = QPushButton("Export to DB")
         self.exportToDbButton.clicked.connect(self.exportDb)
 
-        self.importButton = QPushButton("Import")
+        self.importButton = QPushButton("Import CSV")
         self.importButton.clicked.connect(self.importCSV)
 
         self.reportButton = QPushButton("Generate report")
@@ -557,22 +557,24 @@ class Window(QMainWindow):
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
-        print(path)
+
         if path:
             self.clearTable()
-            with open(path, "r") as stream:
-                print("loading", path)
-                reader = csv.reader(stream)
-                for i, row in enumerate(reader):
-                    if i == 0:
-                        continue
-                    else:
-                        for i in range(8):
-                            self.addValueToCurrentCell(row[i])
-                        if len(row) == 9:
-                            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[8]))
-                        self.colNo = 0
-                        self.rowNo += 1
+            label_df = pd.read_csv(path)
+            fps = get_video_fps(self.video_file_path)
+            self.colNo = 0
+            for _, label_row in label_df.iterrows():
+                self.addValueToCurrentCell(convert_frame_num_to_time(int(label_row["start_frame"]), fps))
+                self.addValueToCurrentCell(convert_frame_num_to_time(int(label_row["end_frame"]), fps))
+                self.addValueToCurrentCell(label_row["exercise"])
+                self.addValueToCurrentCell(label_row["orientation"])
+                self.addValueToCurrentCell(str(label_row["min_reps"]))
+                self.addValueToCurrentCell(str(label_row["reps"]))
+                self.addValueToCurrentCell(str(label_row["rule"]))
+                self.addValueToCurrentCell(str(label_row["reps_to_judge"]))
+                self.addValueToCurrentCell(str(label_row["notes"]))
+                self.colNo = 0
+                self.rowNo += 1
 
     def generateReport(self):
         shutil.rmtree(self.tmpDir, ignore_errors=True)
