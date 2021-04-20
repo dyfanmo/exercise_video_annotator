@@ -231,7 +231,7 @@ class Window(QMainWindow):
         self.exportToDbButton = QPushButton("Export to DB")
         self.exportToDbButton.clicked.connect(self.exportDb)
 
-        self.importButton = QPushButton("Import")
+        self.importButton = QPushButton("Import CSV")
         self.importButton.clicked.connect(self.importCSV)
 
         self.reportButton = QPushButton("Generate report")
@@ -560,20 +560,19 @@ class Window(QMainWindow):
 
         if path:
             self.clearTable()
-            labels = pd.read_csv(path)
+            label_df = pd.read_csv(path)
             fps = get_video_fps(self.video_file_path)
             self.colNo = 0
-            for _, label in labels.iterrows():
-
-                self.addValueToCurrentCell(convert_frame_num_to_time(int(label["start_frame"]), fps))
-                self.addValueToCurrentCell(convert_frame_num_to_time(int(label["end_frame"]), fps))
-                self.addValueToCurrentCell(label["exercise"])
-                self.addValueToCurrentCell(label["orientation"])
-                self.addValueToCurrentCell(str(label["min_reps"]))
-                self.addValueToCurrentCell(str(label["reps"]))
-                self.addValueToCurrentCell(str(label["rule"]))
-                self.addValueToCurrentCell(str(label["reps_to_judge"]))
-                self.addValueToCurrentCell(str(label["notes"]))
+            for _, label_row in label_df.iterrows():
+                self.addValueToCurrentCell(convert_frame_num_to_time(int(label_row["start_frame"]), fps))
+                self.addValueToCurrentCell(convert_frame_num_to_time(int(label_row["end_frame"]), fps))
+                self.addValueToCurrentCell(label_row["exercise"])
+                self.addValueToCurrentCell(label_row["orientation"])
+                self.addValueToCurrentCell(str(label_row["min_reps"]))
+                self.addValueToCurrentCell(str(label_row["reps"]))
+                self.addValueToCurrentCell(str(label_row["rule"]))
+                self.addValueToCurrentCell(str(label_row["reps_to_judge"]))
+                self.addValueToCurrentCell(str(label_row["notes"]))
                 self.colNo = 0
                 self.rowNo += 1
 
