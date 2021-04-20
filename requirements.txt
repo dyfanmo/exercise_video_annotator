@@ -1,5 +1,5 @@
 git+ssh://git@github.com/atlas-fitness/atlas_utils.git@develop
 pandas
 numpy
-PyQt5==5.14.0
+PyQt5
 opencv-python

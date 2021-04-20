@@ -557,22 +557,25 @@ class Window(QMainWindow):
 
     def importCSV(self):
         path, _ = QFileDialog.getOpenFileName(self, "Save File", QDir.homePath(), "CSV Files(*.csv *.txt)")
-        print(path)
+
         if path:
             self.clearTable()
-            with open(path, "r") as stream:
-                print("loading", path)
-                reader = csv.reader(stream)
-                for i, row in enumerate(reader):
-                    if i == 0:
-                        continue
-                    else:
-                        for i in range(8):
-                            self.addValueToCurrentCell(row[i])
-                        if len(row) == 9:
-                            self.tableWidget.setItem(self.rowNo, self.colNo, QTableWidgetItem(row[8]))
-                        self.colNo = 0
-                        self.rowNo += 1
+            labels = pd.read_csv(path)
+            fps = get_video_fps(self.video_file_path)
+            self.colNo = 0
+            for _, label in labels.iterrows():
+
+                self.addValueToCurrentCell(convert_frame_num_to_time(int(label["start_frame"]), fps))
+                self.addValueToCurrentCell(convert_frame_num_to_time(int(label["end_frame"]), fps))
+                self.addValueToCurrentCell(label["exercise"])
+                self.addValueToCurrentCell(label["orientation"])
+                self.addValueToCurrentCell(str(label["min_reps"]))
+                self.addValueToCurrentCell(str(label["reps"]))
+                self.addValueToCurrentCell(str(label["rule"]))
+                self.addValueToCurrentCell(str(label["reps_to_judge"]))
+                self.addValueToCurrentCell(str(label["notes"]))
+                self.colNo = 0
+                self.rowNo += 1
 
     def generateReport(self):
         shutil.rmtree(self.tmpDir, ignore_errors=True)
