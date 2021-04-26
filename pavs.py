@@ -6,42 +6,32 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QFileDialog,
     QStyleFactory,
-    QHBoxLayout,
     QLabel,
     QSizePolicy,
     QSlider,
     QStyle,
-    QVBoxLayout,
     QWidget,
-    QStatusBar,
     QTableWidget,
     QVBoxLayout,
     QTableWidgetItem,
     QHBoxLayout,
-    QSplitter,
-    QGroupBox,
     QFormLayout,
-    QAction,
-    QGridLayout,
     QShortcut,
-    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QMessageBox,
 )
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5 import QtCore, Qt, QtGui
-from PyQt5.QtCore import QRect, QSize, Qt, QUrl, QDir, QTime, pyqtSlot
-from PyQt5.QtGui import QFont, QPixmap, QImage, QColor, QPainter, QPen, QKeySequence, QStandardItemModel, QIntValidator
+from PyQt5 import QtCore, Qt
+from PyQt5.QtCore import Qt, QUrl, QDir, QTime
+from PyQt5.QtGui import QKeySequence, QStandardItemModel, QIntValidator
 import os
 import csv
 import sys
-import numpy as np
 import argparse
 import pandas as pd
 import tempfile
-import subprocess
 import shutil
 import traceback
 from utils import (
@@ -53,6 +43,7 @@ from utils import (
     get_video_fps,
     convert_frame_num_to_time,
     upload_file_to_s3,
+    add_is_valid_column_values,
 )
 
 from atlas_utils.evaluation_framework.generate_report import generate_report
@@ -272,6 +263,11 @@ class Window(QMainWindow):
         self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
 
+        self.isValid = QComboBox(self)
+        self.isValid.addItem("N/A")
+        self.isValid.addItem("False")
+        self.isValid.addItem("True")
+
         self.positionSlider = QSlider(Qt.Horizontal)
         self.positionSlider.setRange(0, 100)
         self.positionSlider.sliderMoved.connect(self.setPosition)
@@ -315,6 +311,7 @@ class Window(QMainWindow):
         inputFields.addWidget(self.minReps, 1)
         inputFields.addWidget(self.maxReps, 1)
         inputFields.addWidget(self.rules, 1)
+        inputFields.addWidget(self.isValid, 1)
         inputFields.addWidget(self.repsToJudge, 1)
 
         feats = QHBoxLayout()
@@ -446,6 +443,7 @@ class Window(QMainWindow):
         self.addValueToCurrentCell(self.minReps.text())
         self.addValueToCurrentCell(self.maxReps.text())
         self.addValueToCurrentCell(self.rules.currentText())
+        self.addValueToCurrentCell(self.isValid.currentText())
         self.addValueToCurrentCell(self.repsToJudge.text())
         self.colNo = 0
         self.rowNo += 1
@@ -514,6 +512,7 @@ class Window(QMainWindow):
             labels_df = labels_df.drop(["start_time", "end_time"], axis=1)
 
         labels_df = add_labels_column(labels_df)
+        labels_df = add_is_valid_column_values(labels_df)
         labels_df.to_csv(filepath)
         return labels_df
 
@@ -571,6 +570,14 @@ class Window(QMainWindow):
                 self.addValueToCurrentCell(str(label_row["min_reps"]))
                 self.addValueToCurrentCell(str(label_row["reps"]))
                 self.addValueToCurrentCell(str(label_row["rule"]))
+
+                is_valid = (
+                    str(label_row["is_valid"])
+                    if "is_valid" in label_df.columns and label_row["is_valid"] in [True, False, "N/A"]
+                    else "N/A"
+                )
+                self.addValueToCurrentCell(is_valid)
+
                 self.addValueToCurrentCell(str(label_row["reps_to_judge"]))
                 self.addValueToCurrentCell(str(label_row["notes"]))
                 self.colNo = 0
@@ -608,7 +615,7 @@ class Window(QMainWindow):
         vid_to_frames(video_ts_path, video_frames_path)
 
     def insertBaseRow(self):
-        self.tableWidget.setColumnCount(9)  # , Start Time, End Time, TimeStamp
+        self.tableWidget.setColumnCount(10)  # , Start Time, End Time, TimeStamp
         self.tableWidget.setRowCount(500)
         self.rowNo = 1
         self.colNo = 0
@@ -619,8 +626,9 @@ class Window(QMainWindow):
         self.tableWidget.setItem(0, 4, QTableWidgetItem("min_reps"))
         self.tableWidget.setItem(0, 5, QTableWidgetItem("reps"))
         self.tableWidget.setItem(0, 6, QTableWidgetItem("rule"))
-        self.tableWidget.setItem(0, 7, QTableWidgetItem("reps_to_judge"))
-        self.tableWidget.setItem(0, 8, QTableWidgetItem("notes"))
+        self.tableWidget.setItem(0, 7, QTableWidgetItem("is_valid"))
+        self.tableWidget.setItem(0, 8, QTableWidgetItem("reps_to_judge"))
+        self.tableWidget.setItem(0, 9, QTableWidgetItem("notes"))
 
     def checkTableFrame(self, row, column):
         if (row > 0) and (column < 2):
