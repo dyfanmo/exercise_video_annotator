@@ -571,7 +571,11 @@ class Window(QMainWindow):
                 self.addValueToCurrentCell(str(label_row["reps"]))
                 self.addValueToCurrentCell(str(label_row["rule"]))
 
-                is_valid = str(label_row["is_valid"]) if "is_valid" in label_df.columns else "N/A"
+                is_valid = (
+                    str(label_row["is_valid"])
+                    if "is_valid" in label_df.columns and label_row["is_valid"] in [True, False, "N/A"]
+                    else "N/A"
+                )
                 self.addValueToCurrentCell(is_valid)
 
                 self.addValueToCurrentCell(str(label_row["reps_to_judge"]))
