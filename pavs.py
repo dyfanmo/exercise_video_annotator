@@ -46,13 +46,13 @@ from utils import (
     add_is_valid_column_values,
 )
 
+from atlas_utils.evaluation_framework.report_generation.form_error.calculate_form_error import form_threshold_dict
 from atlas_utils.evaluation_framework.generate_report import generate_report
 from atlas_utils.vid_utils import vid_to_frames
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
-parser.add_argument("--rules_path", type=str, default="config/rules.txt")
 args = parser.parse_args()
 
 audio_extensions = [".wav", ".mp3"]
@@ -250,18 +250,15 @@ class Window(QMainWindow):
             self.iLabel.addItem(exercise_class[0].strip())
         self.iLabel.activated[str].connect(self.style_choice)
 
-        self.rules = QComboBox(self)
-        rules_file = open(args.rules_path, "r")
-        rules_list = [line.split(",") for line in rules_file.readlines()]
-        for rule in rules_list:
-            self.rules.addItem(rule[0].strip())
-        self.rules.activated[str].connect(self.style_choice)
-
         self.orientation = QComboBox(self)
         self.orientation.addItem("front")
         self.orientation.addItem("side")
         self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
+
+        self.rules = QComboBox(self)
+        self.iLabel.currentIndexChanged.connect(self.update_rules)
+        self.orientation.currentIndexChanged.connect(self.update_rules)
 
         self.isValid = QComboBox(self)
         self.isValid.addItem("N/A")
@@ -714,6 +711,19 @@ class Window(QMainWindow):
     def update_playback_label(self):
         self.playbackIndicator.clear()
         self.playbackIndicator.setText("X" + str(self.mediaPlayer.playbackRate()))
+
+    def update_rules(self):
+        exercise, orientation = self.iLabel.currentText().strip(), self.orientation.currentText().strip()
+
+        self.rules.clear()
+
+        if exercise in form_threshold_dict and orientation in form_threshold_dict[exercise]:
+            rules_list = list(form_threshold_dict[exercise][orientation].keys())
+            for rule in rules_list:
+                self.rules.addItem(rule.strip())
+
+        self.rules.addItem("N/A")
+        self.rules.activated[str].connect(self.style_choice)
 
 
 App = QApplication(sys.argv)
