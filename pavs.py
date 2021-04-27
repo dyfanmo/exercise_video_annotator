@@ -400,7 +400,7 @@ class Window(QMainWindow):
             self.addValueToCurrentCell(label["rules"])
 
             is_valid = (
-                str(label["is_valid"]) if "is_valid" in labels and label["is_valid"] in [True, False, "N/A"] else "N/A"
+                str(label["is_valid"]) if "is_valid" in label and label["is_valid"] in [True, False, "N/A"] else "N/A"
             )
 
             self.addValueToCurrentCell(is_valid)
