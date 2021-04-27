@@ -1,9 +1,0 @@
-knee_track
-depth
-range_of_motion
-step_width
-hip_shift
-heel_lift
-head_stability
-elbow_angle
-N/A
