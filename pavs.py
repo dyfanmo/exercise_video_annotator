@@ -398,6 +398,12 @@ class Window(QMainWindow):
             self.addValueToCurrentCell(str(label["min_reps"]))
             self.addValueToCurrentCell(str(label["reps"]))
             self.addValueToCurrentCell(label["rules"])
+
+            is_valid = (
+                str(label["is_valid"]) if "is_valid" in labels and label["is_valid"] in [True, False, "N/A"] else "N/A"
+            )
+
+            self.addValueToCurrentCell(is_valid)
             self.addValueToCurrentCell(label["reps_to_judge"])
             self.addValueToCurrentCell(label["notes"])
             self.colNo = 0
