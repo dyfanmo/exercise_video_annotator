@@ -123,7 +123,7 @@ def send_labels_to_api(user_id, video_result_id, labels_df):
             "reps_to_judge": checked_value(label_row, "reps_to_judge", ""),
             "start_frame": int(checked_value(label_row, "start_frame", 0)),
             "end_frame": int(checked_value(label_row, "end_frame", 0)),
-            "is_valid": checked_value(label_row, "is_valid", ""),
+            "is_valid": str(checked_value(label_row, "is_valid", "")),
         }
 
         # send a POST request
@@ -137,10 +137,15 @@ def send_labels_to_api(user_id, video_result_id, labels_df):
                     "name": name,
                 },
             )
-            video_label_id = response.json()["id"] if response.status_code == 200 else 0
-            response = session.put(f"{server}/video_label/{video_label_id}", json=request_body)
-            if response.status_code != 200:
-                errors.append(f"Failed to modify existing label {name} with error: {response.json()['errors']['name']}")
+            if response.status_code == 200:
+                video_label_id = response.json()["id"]
+                response = session.put(f"{server}/video_label/{video_label_id}", json=request_body)
+                if response.status_code != 200:
+                    errors.append(
+                        f"Failed to modify existing label {name} with error: {response.json()['errors']['name']}"
+                    )
+            else:
+                errors.append(f"Failed to find label with name '{name}'")
     # return errors to display to user
     return "\n\n".join(errors)
 
