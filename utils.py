@@ -123,6 +123,7 @@ def send_labels_to_api(user_id, video_result_id, labels_df):
             "reps_to_judge": checked_value(label_row, "reps_to_judge", ""),
             "start_frame": int(checked_value(label_row, "start_frame", 0)),
             "end_frame": int(checked_value(label_row, "end_frame", 0)),
+            "is_valid": checked_value(label_row, "is_valid", ""),
         }
 
         # send a POST request
@@ -175,9 +176,9 @@ def get_labels_from_api(user_id, video_result_id):
 def add_is_valid_column_values(label_df):
     for idx, label_row in label_df.iterrows():
         is_valid = (
-                label_row["is_valid"] is not False
-                and label_row["exercise"] in form_threshold_dict
-                and label_row["orientation"] in form_threshold_dict[label_row["exercise"]]
+            label_row["is_valid"] is not False
+            and label_row["exercise"] in form_threshold_dict
+            and label_row["orientation"] in form_threshold_dict[label_row["exercise"]]
         )
         label_df.loc[idx, "is_valid"] = is_valid
 
