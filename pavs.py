@@ -44,6 +44,7 @@ from utils import (
     convert_frame_num_to_time,
     upload_file_to_s3,
     add_is_valid_column_values,
+    get_video_filename_from_api,
 )
 
 from atlas_utils.evaluation_framework.report_generation.form_error.calculate_form_error import form_threshold_dict
@@ -377,7 +378,8 @@ class Window(QMainWindow):
 
             if self.video_file_path == "":
                 try:
-                    self.video_file_path = download_file_from_s3(self.userId, self.videoResultId, "full_video.ts")
+                    filename = get_video_filename_from_api(self.userId, self.videoResultId)
+                    self.video_file_path = download_file_from_s3(self.userId, self.videoResultId, filename)
                     fps = get_video_fps(self.video_file_path)
                     self.populateRowsFromApi(self.userId, self.videoResultId, fps)
                 except:

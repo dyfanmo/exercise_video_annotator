@@ -188,3 +188,22 @@ def add_is_valid_column_values(label_df):
         label_df.loc[idx, "is_valid"] = is_valid
 
     return label_df
+
+
+def get_video_filename_from_api(user_id, video_result_id):
+    """Get filename of video from the results bucket"""
+    default = "full_video.ts"
+    server = get_server(user_id)
+    session = get_session(server)
+    response = session.get(f"{server}/video_result/{video_result_id}")
+    if response.status_code != 200:
+        return default
+
+    full_path = response.json()["internal_s3_raw_video_path"]
+    if full_path == "" or full_path is None:
+        return default
+    try:
+        i = full_path.rindex("/")
+        return full_path[i + 1 :]
+    except:
+        return full_path
