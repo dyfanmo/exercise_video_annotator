@@ -35,6 +35,8 @@ The table in the exercise video annotator is used to input and store the labels 
 - Frame before prev 10 frames: Shift + Right Arrow
 - Increase playback speed: +
 - Decrease playback speed: -
+- Increase rep count number: I
+- Decrease rep count number: D
 - Copy Previous Row: C
 - Add New Row: R
 - Submit Values: ↵ 

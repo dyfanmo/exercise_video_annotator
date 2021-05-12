@@ -188,6 +188,8 @@ class Window(QMainWindow):
         self.videoWidget = QVideoWidget()
         self.frameID = 0
 
+        self.repCount = 0
+
         self.insertBaseRow()
 
         openButton = QPushButton("Open...")
@@ -343,6 +345,10 @@ class Window(QMainWindow):
         self.shortcut.activated.connect(self.increase_playback)
         self.shortcut = QShortcut(QKeySequence("-"), self)
         self.shortcut.activated.connect(self.decrease_playback)
+        self.shortcut = QShortcut(QKeySequence("I"), self)
+        self.shortcut.activated.connect(self.increase_rep_count)
+        self.shortcut = QShortcut(QKeySequence("D"), self)
+        self.shortcut.activated.connect(self.decrease_rep_count)
 
         self.shortcut = QShortcut(QKeySequence(Qt.Key_Return), self)
         self.shortcut.activated.connect(self.next)
@@ -452,6 +458,8 @@ class Window(QMainWindow):
         self.addValueToCurrentCell(self.repsToJudge.text())
         self.colNo = 0
         self.rowNo += 1
+        self.repCount = 0
+        
 
     def delete(self):
         index_list = []
@@ -496,6 +504,15 @@ class Window(QMainWindow):
             self.mediaPlayer.setPlaybackRate(speed_multiplier)
             self.mediaPlayer.setPosition(original_position)
             self.update_playback_label()
+
+    def increase_rep_count(self):
+        self.repCount += 1
+        self.update_rep_count()
+
+    def decrease_rep_count(self):
+        if self.repCount != 0:
+            self.repCount -= 1
+        self.update_rep_count()
 
     def saveToCsv(self, filepath):
         with open(filepath, "w") as stream:
@@ -732,6 +749,10 @@ class Window(QMainWindow):
 
         self.rules.addItem("N/A")
         self.rules.activated[str].connect(self.style_choice)
+
+    def update_rep_count(self):
+        self.maxReps.clear()
+        self.maxReps.setText(str(self.repCount))
 
 
 App = QApplication(sys.argv)
