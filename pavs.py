@@ -510,7 +510,7 @@ class Window(QMainWindow):
         self.update_rep_count()
 
     def decrease_rep_count(self):
-        if self.repCount != 0:
+        if self.repCount > 0:
             self.repCount -= 1
         self.update_rep_count()
 
@@ -751,7 +751,6 @@ class Window(QMainWindow):
         self.rules.activated[str].connect(self.style_choice)
 
     def update_rep_count(self):
-        self.maxReps.clear()
         self.maxReps.setText(str(self.repCount))
 
 
