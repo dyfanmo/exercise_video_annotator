@@ -7,9 +7,13 @@ import string
 import random
 import tempfile
 
+from atlas_utils.tools import get_server, get_session
 from atlas_utils.aws_utils import aws_download_file, aws_upload_file
 from atlas_utils.vid_utils import get_video_fps
 from atlas_utils.evaluation_framework.report_generation.form_error.calculate_form_error import form_threshold_dict
+
+
+admin_user = "vlad@atlasai.co.uk"
 
 
 def convert_time_to_seconds(time_string):
@@ -82,7 +86,7 @@ def send_labels_to_api(user_id, video_result_id, labels_df):
     errors = []
 
     server = get_server(user_id)
-    session = get_session(server)
+    session = get_session(server, username=admin_user)
 
     # Check VideoResult exists
     response = session.get(f"{server}/video_result/{video_result_id}")
@@ -153,7 +157,7 @@ def upload_file_to_s3(user_id, video_result_id, filename):
 def get_labels_from_api(user_id, video_result_id):
     """Get labels for the given video_result_id from the API"""
     server = get_server(user_id)
-    session = get_session(server)
+    session = get_session(server, username=admin_user)
 
     response = session.get(f"{server}/video_label/", json={"video_result_id": video_result_id})
     if response.status_code == 200:
@@ -177,7 +181,7 @@ def get_video_filename_from_api(user_id, video_result_id):
     """Get filename of video from the results bucket"""
     default = "full_video.ts"
     server = get_server(user_id)
-    session = get_session(server)
+    session = get_session(server, username=admin_user)
     response = session.get(f"{server}/video_result/{video_result_id}")
     if response.status_code != 200:
         return default
