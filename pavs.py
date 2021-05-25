@@ -44,12 +44,12 @@ from utils import (
     convert_frame_num_to_time,
     upload_file_to_s3,
     add_is_valid_column_values,
+    get_video_filename_from_api,
 )
 
 from atlas_utils.evaluation_framework.report_generation.form_error.calculate_form_error import form_threshold_dict
 from atlas_utils.evaluation_framework.generate_report import generate_report
 from atlas_utils.vid_utils import vid_to_frames
-from atlas_utils.tools import get_video_filename_from_api
 
 
 parser = argparse.ArgumentParser()
