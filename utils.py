@@ -157,7 +157,7 @@ def upload_file_to_s3(user_id, video_result_id, filename):
 def get_labels_from_api(user_id, video_result_id):
     """Get labels for the given video_result_id from the API"""
     server = get_server(user_id)
-    session = get_session(server, username=admin_user)
+    session = get_session(server)
 
     response = session.get(f"{server}/video_label/", json={"video_result_id": video_result_id})
     if response.status_code == 200:
