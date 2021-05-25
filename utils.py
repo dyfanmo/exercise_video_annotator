@@ -7,9 +7,13 @@ import string
 import random
 import tempfile
 
+from atlas_utils.tools import get_server, get_session
 from atlas_utils.aws_utils import aws_download_file, aws_upload_file
 from atlas_utils.vid_utils import get_video_fps
 from atlas_utils.evaluation_framework.report_generation.form_error.calculate_form_error import form_threshold_dict
+
+
+admin_user = "vlad@atlasai.co.uk"
 
 
 def convert_time_to_seconds(time_string):
@@ -55,17 +59,6 @@ def add_labels_column(df):
     return df
 
 
-def get_session(server):
-    """Make session send requests with dev token"""
-    sess = requests.session()
-    username = "vlad@atlasai.co.uk"
-    pw = "remote_2020"
-    login_endpoint = server + "/auth/login"
-    tokens = sess.post(login_endpoint, json={"username": username, "password": pw}).json()
-    sess.headers.update({"Authorization": "Bearer " + tokens["access_token"]})
-    return sess
-
-
 def get_random_string(characters=16):
     """Generates a random string"""
     s = "".join(random.choices(string.ascii_uppercase + string.digits, k=characters))
@@ -82,12 +75,6 @@ def checked_value(dict, key, default_value):
         return default_value
 
 
-def get_server(user_id):
-    if user_id > 1000:
-        return "https://atlas-remote-prod.atlasaiapi.co.uk/api/v1"
-    return "https://atlas-remote-dev.atlasaiapi.co.uk/api/v1"
-
-
 def delete_existing_labels(server, session, video_result_id):
     response = session.get(f"{server}/video_label/", json={"video_result_id": video_result_id})
 
@@ -99,7 +86,7 @@ def send_labels_to_api(user_id, video_result_id, labels_df):
     errors = []
 
     server = get_server(user_id)
-    session = get_session(server)
+    session = get_session(server, username=admin_user)
 
     # Check VideoResult exists
     response = session.get(f"{server}/video_result/{video_result_id}")
@@ -194,7 +181,7 @@ def get_video_filename_from_api(user_id, video_result_id):
     """Get filename of video from the results bucket"""
     default = "full_video.ts"
     server = get_server(user_id)
-    session = get_session(server)
+    session = get_session(server, username=admin_user)
     response = session.get(f"{server}/video_result/{video_result_id}")
     if response.status_code != 200:
         return default
