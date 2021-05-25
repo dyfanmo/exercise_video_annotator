@@ -7,7 +7,6 @@ import string
 import random
 import tempfile
 
-from atlas_utils.tools import get_session, get_server
 from atlas_utils.aws_utils import aws_download_file, aws_upload_file
 from atlas_utils.vid_utils import get_video_fps
 from atlas_utils.evaluation_framework.report_generation.form_error.calculate_form_error import form_threshold_dict
