@@ -52,12 +52,14 @@ from atlas_utils.vid_utils import vid_to_frames
 from atlas_utils.tools import get_video_filename_from_api
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
-args = parser.parse_args()
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
+    args = parser.parse_args()
 
-audio_extensions = [".wav", ".mp3"]
-video_extensions = [".avi", ".mp4", ".mkv", ".ts"]
+    App = QApplication(sys.argv)
+    window = Window(args.classes_label_path)
+    sys.exit(App.exec())
 
 
 def showErrorDialog(message):
@@ -154,21 +156,21 @@ class OpenVideoInputDialog(QDialog):
 
 
 class Window(QMainWindow):
-    def __init__(self):
+    def __init__(self, classes_label_path):
         super().__init__()
 
         self.title = "Exercise Video Annotator"
-        self.InitWindow()
+        self.InitWindow(classes_label_path)
 
-    def InitWindow(self):
+    def InitWindow(self, classes_label_path):
         self.setWindowTitle(self.title)
         self.setWindowState(QtCore.Qt.WindowMaximized)
 
-        self.UiComponents()
+        self.UiComponents(classes_label_path)
 
         self.show()
 
-    def UiComponents(self):
+    def UiComponents(self, classes_label_path):
 
         self.rowNo = 1
         self.colNo = 0
@@ -247,7 +249,7 @@ class Window(QMainWindow):
         self.repsToJudge.setPlaceholderText("Reps To Judge")
 
         self.iLabel = QComboBox(self)
-        exercise_file = open(args.classes_label_path, "r")
+        exercise_file = open(classes_label_path, "r")
         exercise_list = [line.split(",") for line in exercise_file.readlines()]
         for exercise_class in exercise_list:
             self.iLabel.addItem(exercise_class[0].strip())
@@ -461,7 +463,6 @@ class Window(QMainWindow):
         self.colNo = 0
         self.rowNo += 1
         self.repCount = 0
-        
 
     def delete(self):
         index_list = []
@@ -756,6 +757,5 @@ class Window(QMainWindow):
         self.maxReps.setText(str(self.repCount))
 
 
-App = QApplication(sys.argv)
-window = Window()
-sys.exit(App.exec())
+if __name__ == "__main__":
+    main()
