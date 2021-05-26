@@ -29,7 +29,6 @@ from PyQt5.QtGui import QKeySequence, QStandardItemModel, QIntValidator
 import os
 import csv
 import sys
-import argparse
 import pandas as pd
 import tempfile
 import shutil
@@ -52,12 +51,10 @@ from atlas_utils.vid_utils import vid_to_frames
 from atlas_utils.tools import get_video_filename_from_api
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
-args = parser.parse_args()
-
-audio_extensions = [".wav", ".mp3"]
-video_extensions = [".avi", ".mp4", ".mkv", ".ts"]
+def main():
+    App = QApplication(sys.argv)
+    window = Window()
+    sys.exit(App.exec())
 
 
 def showErrorDialog(message):
@@ -247,7 +244,7 @@ class Window(QMainWindow):
         self.repsToJudge.setPlaceholderText("Reps To Judge")
 
         self.iLabel = QComboBox(self)
-        exercise_file = open(args.classes_label_path, "r")
+        exercise_file = open("config/classes.txt", "r")
         exercise_list = [line.split(",") for line in exercise_file.readlines()]
         for exercise_class in exercise_list:
             self.iLabel.addItem(exercise_class[0].strip())
@@ -461,7 +458,6 @@ class Window(QMainWindow):
         self.colNo = 0
         self.rowNo += 1
         self.repCount = 0
-        
 
     def delete(self):
         index_list = []
@@ -756,6 +752,5 @@ class Window(QMainWindow):
         self.maxReps.setText(str(self.repCount))
 
 
-App = QApplication(sys.argv)
-window = Window()
-sys.exit(App.exec())
+if __name__ == "__main__":
+    main()
