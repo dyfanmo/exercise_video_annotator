@@ -29,6 +29,7 @@ from PyQt5.QtGui import QKeySequence, QStandardItemModel, QIntValidator
 import os
 import csv
 import sys
+import argparse
 import pandas as pd
 import tempfile
 import shutil
@@ -52,8 +53,12 @@ from atlas_utils.tools import get_video_filename_from_api
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
+    args = parser.parse_args()
+
     App = QApplication(sys.argv)
-    window = Window()
+    window = Window(args.classes_label_path)
     sys.exit(App.exec())
 
 
@@ -151,21 +156,21 @@ class OpenVideoInputDialog(QDialog):
 
 
 class Window(QMainWindow):
-    def __init__(self):
+    def __init__(self, classes_label_path):
         super().__init__()
 
         self.title = "Exercise Video Annotator"
-        self.InitWindow()
+        self.InitWindow(classes_label_path)
 
-    def InitWindow(self):
+    def InitWindow(self, classes_label_path):
         self.setWindowTitle(self.title)
         self.setWindowState(QtCore.Qt.WindowMaximized)
 
-        self.UiComponents()
+        self.UiComponents(classes_label_path)
 
         self.show()
 
-    def UiComponents(self):
+    def UiComponents(self, classes_label_path):
 
         self.rowNo = 1
         self.colNo = 0
@@ -244,7 +249,7 @@ class Window(QMainWindow):
         self.repsToJudge.setPlaceholderText("Reps To Judge")
 
         self.iLabel = QComboBox(self)
-        exercise_file = open("config/classes.txt", "r")
+        exercise_file = open(classes_label_path, "r")
         exercise_list = [line.split(",") for line in exercise_file.readlines()]
         for exercise_class in exercise_list:
             self.iLabel.addItem(exercise_class[0].strip())
