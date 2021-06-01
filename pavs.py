@@ -54,7 +54,7 @@ from atlas_utils.tools import get_video_filename_from_api
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--classes_label_path", type=str, default="config/classes.txt")
+    parser.add_argument("--classes_label_path", type=str)
     args = parser.parse_args()
 
     App = QApplication(sys.argv)
@@ -248,22 +248,29 @@ class Window(QMainWindow):
         self.repsToJudge = QLineEdit()
         self.repsToJudge.setPlaceholderText("Reps To Judge")
 
-        self.iLabel = QComboBox(self)
-        exercise_file = open(classes_label_path, "r")
-        exercise_list = [line.split(",") for line in exercise_file.readlines()]
-        for exercise_class in exercise_list:
-            self.iLabel.addItem(exercise_class[0].strip())
-        self.iLabel.activated[str].connect(self.style_choice)
-
         self.orientation = QComboBox(self)
         self.orientation.addItem("front")
         self.orientation.addItem("side")
         self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
 
-        self.rules = QComboBox(self)
-        self.iLabel.currentIndexChanged.connect(self.update_rules)
-        self.orientation.currentIndexChanged.connect(self.update_rules)
+        if classes_label_path:
+            self.iLabel = QComboBox(self)
+            exercise_file = open(classes_label_path, "r")
+            exercise_list = [line.split(",") for line in exercise_file.readlines()]
+            for exercise_class in exercise_list:
+                self.iLabel.addItem(exercise_class[0].strip())
+            self.iLabel.activated[str].connect(self.style_choice)
+
+            self.rules = QComboBox(self)
+            self.iLabel.currentIndexChanged.connect(self.update_rules)
+            self.orientation.currentIndexChanged.connect(self.update_rules)
+        else:
+            self.iLabel = QLineEdit()
+            self.iLabel.setPlaceholderText("Exercise")
+
+            self.rules = QLineEdit()
+            self.rules.setPlaceholderText("Rule")
 
         self.isValid = QComboBox(self)
         self.isValid.addItem("N/A")
