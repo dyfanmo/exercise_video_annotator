@@ -20,7 +20,6 @@ from PyQt5.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QMessageBox,
-    QCheckBox,
     QRadioButton,
 )
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
@@ -129,6 +128,8 @@ class OpenVideoInputDialog(QDialog):
         self.userId = QLineEdit(self)
         self.videoResultId = QLineEdit(self)
         self.videoFilepath = ""
+        self.b1 = QRadioButton("Annotated Video", self)
+        self.b2 = QRadioButton("Full Video", self)
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         openButton = QPushButton("Choose...")
         openButton.clicked.connect(self.openFile)
@@ -141,14 +142,8 @@ class OpenVideoInputDialog(QDialog):
         layout.addRow(QLabel("From S3 bucket"))
         layout.addRow("User ID", self.userId)
         layout.addRow("Video Result ID", self.videoResultId)
-
-        self.b1 = QRadioButton("Annotated Video", self)
-
-        self.b2 = QRadioButton("Full Video", self)
-
         layout.addWidget(self.b1)
         layout.addWidget(self.b2)
-
         layout.addWidget(buttonBox)
         layout.addRow(QLabel("From local files"))
         layout.addWidget(openButton)
