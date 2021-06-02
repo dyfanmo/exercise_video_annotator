@@ -24,6 +24,10 @@ The table in the exercise video annotator is used to input and store the labels 
  ```
      python pavs.py
 ```
+   * You can use a list of preset exercises to choose from in the labelling tool. In this case use:
+   ```
+     python pavs.py --classes_label_path config/classes.txt
+```
 
 ## Shortcuts
 - Load video: L
