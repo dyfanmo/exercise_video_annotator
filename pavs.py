@@ -20,6 +20,8 @@ from PyQt5.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QMessageBox,
+    QCheckBox,
+    QRadioButton,
 )
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
@@ -139,6 +141,14 @@ class OpenVideoInputDialog(QDialog):
         layout.addRow(QLabel("From S3 bucket"))
         layout.addRow("User ID", self.userId)
         layout.addRow("Video Result ID", self.videoResultId)
+
+        self.b1 = QRadioButton("Annotated Video", self)
+
+        self.b2 = QRadioButton("Full Video", self)
+
+        layout.addWidget(self.b1)
+        layout.addWidget(self.b2)
+
         layout.addWidget(buttonBox)
         layout.addRow(QLabel("From local files"))
         layout.addWidget(openButton)
@@ -147,7 +157,7 @@ class OpenVideoInputDialog(QDialog):
         buttonBox.rejected.connect(self.reject)
 
     def getInputs(self):
-        return (self.userId.text(), self.videoResultId.text(), self.videoFilepath)
+        return (self.userId.text(), self.videoResultId.text(), self.videoFilepath, self.b1, self.b2)
 
     def openFile(self):
         fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie", QDir.homePath())
@@ -378,7 +388,8 @@ class Window(QMainWindow):
     def openFile(self):
         openVideoDialog = OpenVideoInputDialog(self)
         if openVideoDialog.exec():
-            user_id, video_result_id, video_filepath = openVideoDialog.getInputs()
+            user_id, video_result_id, video_filepath, b1, b2 = openVideoDialog.getInputs()
+            b1_is_checked, b2_is_checked = b1.isChecked(), b2.isChecked()
 
             self.userId = int(user_id) if user_id != "" else -1
             self.videoResultId = int(video_result_id) if video_result_id != "" else -1
@@ -386,7 +397,13 @@ class Window(QMainWindow):
 
             if self.video_file_path == "":
                 try:
-                    filename = get_video_filename_from_api(self.userId, self.videoResultId)
+                    if b1_is_checked:
+                        filename = "annotated_video.mp4"
+                    elif b2_is_checked:
+                        filename = get_video_filename_from_api(self.userId, self.videoResultId)
+                    else:
+                        showErrorDialog("Choose which type of video to load.")
+
                     self.video_file_path = download_file_from_s3(self.userId, self.videoResultId, filename)
                     fps = get_video_fps(self.video_file_path)
                     self.populateRowsFromApi(self.userId, self.videoResultId, fps)
