@@ -414,7 +414,7 @@ class Window(QMainWindow):
                 try:
                     if full_video_radio_button.isChecked():
                         filename = get_video_filename_from_api(self.userId, self.videoResultId)
-                    else:
+                    elif annotated_video_radio_button.isChecked():
                         filename = "annotated_video.mp4"
 
                     self.video_file_path = download_file_from_s3(self.userId, self.videoResultId, filename)
