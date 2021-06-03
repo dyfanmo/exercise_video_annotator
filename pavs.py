@@ -129,6 +129,7 @@ class OpenVideoInputDialog(QDialog):
         self.videoResultId = QLineEdit(self)
         self.annotated_video_radio_button = QRadioButton("Annotated Video", self)
         self.full_video_radio_button = QRadioButton("Full Video", self)
+        self.annotated_video_radio_button.setChecked(True)
         self.videoFilepath = ""
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         openButton = QPushButton("Choose...")
@@ -407,6 +408,7 @@ class Window(QMainWindow):
             self.userId = int(user_id) if user_id != "" else -1
             self.videoResultId = int(video_result_id) if video_result_id != "" else -1
             self.video_file_path = video_filepath
+            filename = ""
 
             if self.video_file_path == "":
                 try:
