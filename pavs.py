@@ -620,8 +620,8 @@ class Window(QMainWindow):
             for _, label_row in label_df.iterrows():
                 self.addValueToCurrentCell(convert_frame_num_to_time(int(label_row["start_frame"]), fps))
                 self.addValueToCurrentCell(convert_frame_num_to_time(int(label_row["end_frame"]), fps))
-                self.addValueToCurrentCell(label_row["exercise"])
-                self.addValueToCurrentCell(label_row["orientation"])
+                self.addValueToCurrentCell(str(label_row["exercise"]))
+                self.addValueToCurrentCell(str(label_row["orientation"]))
                 self.addValueToCurrentCell(str(label_row["min_reps"]))
                 self.addValueToCurrentCell(str(label_row["reps"]))
                 self.addValueToCurrentCell(str(label_row["rule"]))
