@@ -172,17 +172,18 @@ class Window(QMainWindow):
         super().__init__()
 
         self.title = "Exercise Video Annotator"
-        self.InitWindow(classes_label_path)
+        self.classes_label_path = classes_label_path
+        self.InitWindow()
 
-    def InitWindow(self, classes_label_path):
+    def InitWindow(self):
         self.setWindowTitle(self.title)
         self.setWindowState(QtCore.Qt.WindowMaximized)
 
-        self.UiComponents(classes_label_path)
+        self.UiComponents()
 
         self.show()
 
-    def UiComponents(self, classes_label_path):
+    def UiComponents(self):
 
         self.rowNo = 1
         self.colNo = 0
@@ -266,9 +267,9 @@ class Window(QMainWindow):
         self.orientation.addItem("diagonal")
         self.orientation.activated[str].connect(self.style_choice)
 
-        if classes_label_path:
+        if self.classes_label_path:
             self.iLabel = QComboBox(self)
-            exercise_file = open(classes_label_path, "r")
+            exercise_file = open(self.classes_label_path, "r")
             exercise_list = [line.split(",") for line in exercise_file.readlines()]
             for exercise_class in exercise_list:
                 self.iLabel.addItem(exercise_class[0].strip())
@@ -480,14 +481,20 @@ class Window(QMainWindow):
     def addRepCount(self):
         self.repCount.setText(self.lbl.text())
 
+    def adjustableAddValueToCurrentCell(self, column_row):
+        if self.classes_label_path:
+            self.addValueToCurrentCell(column_row.currentText())
+        else:
+            self.addValueToCurrentCell(column_row.text())
+
     def next(self):
         self.addValueToCurrentCell(self.startTime.text())
         self.addValueToCurrentCell(self.endTime.text())
-        self.addValueToCurrentCell(self.iLabel.currentText())
+        self.adjustableAddValueToCurrentCell(self.iLabel)
         self.addValueToCurrentCell(self.orientation.currentText())
         self.addValueToCurrentCell(self.minReps.text())
         self.addValueToCurrentCell(self.maxReps.text())
-        self.addValueToCurrentCell(self.rules.currentText())
+        self.adjustableAddValueToCurrentCell(self.rules)
         self.addValueToCurrentCell(self.isValid.currentText())
         self.addValueToCurrentCell(self.repsToJudge.text())
         self.colNo = 0
