@@ -44,14 +44,13 @@ from utils import (
     get_video_fps,
     convert_frame_num_to_time,
     upload_file_to_s3,
-    add_is_valid_column_values,
 )
 
 from atlas_utils.evaluation_framework.report_generation.form_error.calculate_form_error import form_threshold_dict
 from atlas_utils.evaluation_framework.generate_report import generate_report
 from atlas_utils.vid_utils import vid_to_frames
 from atlas_utils.tools import get_video_filename_from_api
-
+from atlas_utils.evaluation_framework.report_generation.utils import add_is_valid_values_to_df
 
 def main():
     parser = argparse.ArgumentParser()
@@ -574,7 +573,7 @@ class Window(QMainWindow):
             labels_df = labels_df.drop(["start_time", "end_time"], axis=1)
 
         labels_df = add_labels_column(labels_df)
-        labels_df = add_is_valid_column_values(labels_df)
+        labels_df = add_is_valid_values_to_df(labels_df)
         labels_df.to_csv(filepath)
         return labels_df
 
@@ -667,14 +666,15 @@ class Window(QMainWindow):
             self.reportButton.setDisabled(False)
 
     def setupGenerateReport(self, user_id, video_result_id, output_dir):
-        video_ts_path = os.path.join(output_dir, "full_video.ts")
+        full_video_filename = get_video_filename_from_api(user_id, video_result_id)
+        video_path = os.path.join(output_dir, full_video_filename)
         video_frames_path = os.path.join(output_dir, "full_video_frames")
-        download_file_from_s3(user_id, video_result_id, "full_video.ts", video_ts_path)
+        download_file_from_s3(user_id, video_result_id, full_video_filename, video_path)
         download_file_from_s3(
             user_id, video_result_id, "pose_results.json", os.path.join(output_dir, "pose_results.json")
         )
 
-        vid_to_frames(video_ts_path, video_frames_path)
+        vid_to_frames(video_path, video_frames_path)
 
     def insertBaseRow(self):
         self.tableWidget.setColumnCount(10)  # , Start Time, End Time, TimeStamp
