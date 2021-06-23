@@ -667,14 +667,15 @@ class Window(QMainWindow):
             self.reportButton.setDisabled(False)
 
     def setupGenerateReport(self, user_id, video_result_id, output_dir):
-        video_ts_path = os.path.join(output_dir, "full_video.ts")
+        full_video_filename = get_video_filename_from_api(user_id, video_result_id)
+        video_path = os.path.join(output_dir, full_video_filename)
         video_frames_path = os.path.join(output_dir, "full_video_frames")
-        download_file_from_s3(user_id, video_result_id, "full_video.ts", video_ts_path)
+        download_file_from_s3(user_id, video_result_id, full_video_filename, video_path)
         download_file_from_s3(
             user_id, video_result_id, "pose_results.json", os.path.join(output_dir, "pose_results.json")
         )
 
-        vid_to_frames(video_ts_path, video_frames_path)
+        vid_to_frames(video_path, video_frames_path)
 
     def insertBaseRow(self):
         self.tableWidget.setColumnCount(10)  # , Start Time, End Time, TimeStamp
