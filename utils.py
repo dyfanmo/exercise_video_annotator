@@ -163,15 +163,3 @@ def get_labels_from_api(user_id, video_result_id):
     if response.status_code == 200:
         return response.json()
     return []
-
-
-def add_is_valid_column_values(label_df):
-    for idx, label_row in label_df.iterrows():
-        is_valid = (
-            label_row["is_valid"] is not False
-            and label_row["exercise"] in form_threshold_dict
-            and label_row["orientation"] in form_threshold_dict[label_row["exercise"]]
-        )
-        label_df.loc[idx, "is_valid"] = is_valid
-
-    return label_df
