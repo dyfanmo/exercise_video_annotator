@@ -52,7 +52,6 @@ from atlas_utils.vid_utils import vid_to_frames
 from atlas_utils.tools import get_video_filename_from_api
 from atlas_utils.evaluation_framework.report_generation.utils import add_is_valid_values_to_df
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--classes_label_path", type=str)
