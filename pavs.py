@@ -172,6 +172,7 @@ class Window(QMainWindow):
 
         self.title = "Exercise Video Annotator"
         self.classes_label_path = classes_label_path
+        self.full_video_filename = ""
         self.InitWindow()
 
     def InitWindow(self):
@@ -657,7 +658,9 @@ class Window(QMainWindow):
             tmp_dir = os.path.join(self.tmpDir, str(self.videoResultId))
             self.setupGenerateReport(self.userId, self.videoResultId, tmp_dir)
 
-            pdf_fp = generate_report(self.tmpDir, str(self.videoResultId), output_pdf_dir=self.tmpDir)
+            pdf_fp = generate_report(
+                self.tmpDir, str(self.videoResultId), self.full_video_filename, output_pdf_dir=self.tmpDir
+            )
             upload_file_to_s3(self.userId, self.videoResultId, pdf_fp)
             showDialog(f"Report generated at: {pdf_fp} and uploaded to S3!")
         except Exception:
@@ -666,10 +669,10 @@ class Window(QMainWindow):
             self.reportButton.setDisabled(False)
 
     def setupGenerateReport(self, user_id, video_result_id, output_dir):
-        full_video_filename = get_video_filename_from_api(user_id, video_result_id)
-        video_path = os.path.join(output_dir, full_video_filename)
+        self.full_video_filename = get_video_filename_from_api(user_id, video_result_id)
+        video_path = os.path.join(output_dir, self.full_video_filename)
         video_frames_path = os.path.join(output_dir, "full_video_frames")
-        download_file_from_s3(user_id, video_result_id, full_video_filename, video_path)
+        download_file_from_s3(user_id, video_result_id, self.full_video_filename, video_path)
         download_file_from_s3(
             user_id, video_result_id, "pose_results.json", os.path.join(output_dir, "pose_results.json")
         )
