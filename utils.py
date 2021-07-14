@@ -163,3 +163,12 @@ def get_labels_from_api(user_id, video_result_id):
     if response.status_code == 200:
         return response.json()
     return []
+
+
+def get_predicted_labels_from_api(user_id, video_result_id):
+    server = get_server(user_id)
+    session = get_session(server, username=admin_user)
+    response = session.get(f"{server}/video_result/{video_result_id}/exercise_sets")
+    if response.status_code == 200:
+        return response.json()
+    return []

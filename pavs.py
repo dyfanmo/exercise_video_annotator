@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5 import QtCore, Qt
+from PyQt5 import QtCore, Qt, QtWidgets
 from PyQt5.QtCore import Qt, QUrl, QDir, QTime
 from PyQt5.QtGui import QKeySequence, QStandardItemModel, QIntValidator
 import os
@@ -44,6 +44,7 @@ from utils import (
     get_video_fps,
     convert_frame_num_to_time,
     upload_file_to_s3,
+    get_predicted_labels_from_api,
 )
 
 from atlas_utils.evaluation_framework.report_generation.form_error.calculate_form_error import form_threshold_dict
@@ -206,7 +207,7 @@ class Window(QMainWindow):
 
         self.repCount = 0
 
-        self.insertBaseRow()
+        self.insertBaseRowForLabels()
 
         openButton = QPushButton("Open...")
         openButton.clicked.connect(self.openFile)
@@ -245,6 +246,10 @@ class Window(QMainWindow):
 
         self.reportButton = QPushButton("Generate report")
         self.reportButton.clicked.connect(self.generateReport)
+
+        self.switchLabelsButton = QPushButton("Switch Labels")
+        self.switchLabelsButton.clicked.connect(self.switchLabels)
+        self.switchLabelsButton.setEnabled(False)
 
         self.startTime = QLineEdit()
         self.startTime.setPlaceholderText("Start Time")
@@ -343,6 +348,7 @@ class Window(QMainWindow):
         feats.addWidget(self.exportToDbButton)
         feats.addWidget(self.importButton)
         feats.addWidget(self.reportButton)
+        feats.addWidget(self.switchLabelsButton)
 
         layout2 = QVBoxLayout()
         layout2.addWidget(self.tableWidget)
@@ -419,21 +425,35 @@ class Window(QMainWindow):
                         filename = "annotated_video.mp4"
 
                     self.video_file_path = download_file_from_s3(self.userId, self.videoResultId, filename)
-                    fps = get_video_fps(self.video_file_path)
-                    self.populateRowsFromApi(self.userId, self.videoResultId, fps)
+                    self.fps = get_video_fps(self.video_file_path)
                 except:
                     showErrorDialog("Failed to download video from S3. Check that the video exists and try again.")
+
+                try:
+                    self.predicted_labels = get_predicted_labels_from_api(self.userId, self.videoResultId)
+                    self.labels = get_labels_from_api(self.userId, self.videoResultId)
+                    self.populateTableWithLabels()
+                    self.switchLabelsButton.setEnabled(True)
+                except:
+                    showErrorDialog("Failed to download the labels from the database.")
 
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.video_file_path)))
             self.playButton.setEnabled(True)
 
-    def populateRowsFromApi(self, user_id, video_result_id, fps):
-        self.clearTable()
-        labels = get_labels_from_api(user_id, video_result_id)
+    def populateTableWithPredictedLabels(self):
         self.colNo = 0
-        for label in labels:
-            self.addValueToCurrentCell(convert_frame_num_to_time(label["start_frame"], fps))
-            self.addValueToCurrentCell(convert_frame_num_to_time(label["end_frame"], fps))
+        for label in self.predicted_labels:
+            self.addValueToCurrentCell(convert_frame_num_to_time(label["start_frame"], self.fps))
+            self.addValueToCurrentCell(convert_frame_num_to_time(label["end_frame"], self.fps))
+            self.addValueToCurrentCell(label["exercise"])
+            self.colNo = 0
+            self.rowNo += 1
+
+    def populateTableWithLabels(self):
+        self.colNo = 0
+        for label in self.labels:
+            self.addValueToCurrentCell(convert_frame_num_to_time(label["start_frame"], self.fps))
+            self.addValueToCurrentCell(convert_frame_num_to_time(label["end_frame"], self.fps))
             self.addValueToCurrentCell(label["exercise"])
             self.addValueToCurrentCell(label["view"])
             self.addValueToCurrentCell(str(label["min_reps"]))
@@ -515,7 +535,7 @@ class Window(QMainWindow):
     def clearTable(self):
         while self.tableWidget.rowCount() > 0:
             self.tableWidget.removeRow(0)
-        self.insertBaseRow()
+
 
     def copyRow(self):
         columnCount = self.tableWidget.columnCount()
@@ -621,6 +641,7 @@ class Window(QMainWindow):
 
         if path:
             self.clearTable()
+            self.insertBaseRowForLabels()
             label_df = pd.read_csv(path)
             fps = get_video_fps(self.video_file_path)
             self.colNo = 0
@@ -644,6 +665,19 @@ class Window(QMainWindow):
                 self.addValueToCurrentCell(str(label_row["notes"]))
                 self.colNo = 0
                 self.rowNo += 1
+
+    def switchLabels(self):
+        self.clearTable()
+        if self.tableWidget.columnCount() == 10:
+            self.insertBaseRowForPredictedLabels()
+            self.populateTableWithPredictedLabels()
+            self.reportButton.setEnabled(False)
+            self.exportToDbButton.setEnabled(False)
+        elif self.tableWidget.columnCount() == 3:
+            self.insertBaseRowForLabels()
+            self.populateTableWithLabels()
+            self.reportButton.setEnabled(True)
+            self.exportToDbButton.setEnabled(True)
 
     def generateReport(self):
         shutil.rmtree(self.tmpDir, ignore_errors=True)
@@ -679,7 +713,17 @@ class Window(QMainWindow):
 
         vid_to_frames(video_path, video_frames_path)
 
-    def insertBaseRow(self):
+    def insertBaseRowForPredictedLabels(self):
+        self.tableWidget.setColumnCount(3)
+        self.tableWidget.setRowCount(500)
+        self.rowNo = 1
+        self.colNo = 0
+        self.tableWidget.setItem(0, 0, QTableWidgetItem("start_time"))
+        self.tableWidget.setItem(0, 1, QTableWidgetItem("end_time"))
+        self.tableWidget.setItem(0, 2, QTableWidgetItem("exercise"))
+        self.autoResizeTableColumnWidth()
+
+    def insertBaseRowForLabels(self):
         self.tableWidget.setColumnCount(10)  # , Start Time, End Time, TimeStamp
         self.tableWidget.setRowCount(500)
         self.rowNo = 1
@@ -694,6 +738,13 @@ class Window(QMainWindow):
         self.tableWidget.setItem(0, 7, QTableWidgetItem("is_valid"))
         self.tableWidget.setItem(0, 8, QTableWidgetItem("reps_to_judge"))
         self.tableWidget.setItem(0, 9, QTableWidgetItem("notes"))
+        self.autoResizeTableColumnWidth()
+
+    def autoResizeTableColumnWidth(self):
+        header = self.tableWidget.horizontalHeader()
+        for i in range(self.tableWidget.columnCount()):
+            if self.tableWidget.item(0, i).text() != "notes":
+                header.setSectionResizeMode(i, QtWidgets.QHeaderView.ResizeToContents)
 
     def checkTableFrame(self, row, column):
         if (row > 0) and (column < 2):
