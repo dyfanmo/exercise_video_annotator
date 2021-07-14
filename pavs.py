@@ -432,6 +432,9 @@ class Window(QMainWindow):
                 try:
                     self.predicted_labels = get_predicted_labels_from_api(self.userId, self.videoResultId)
                     self.labels = get_labels_from_api(self.userId, self.videoResultId)
+                    
+                    self.clearTable()
+                    self.insertBaseRowForLabels()
                     self.populateTableWithLabels()
                     self.switchLabelsButton.setEnabled(True)
                 except:
