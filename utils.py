@@ -166,6 +166,7 @@ def get_labels_from_api(user_id, video_result_id):
 
 
 def get_predicted_labels_from_api(user_id, video_result_id):
+    """Get predicted labels for the given video_result_id from the API"""
     server = get_server(user_id)
     session = get_session(server, username=admin_user)
     response = session.get(f"{server}/video_result/{video_result_id}/exercise_sets")
