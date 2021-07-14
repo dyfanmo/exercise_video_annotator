@@ -53,6 +53,7 @@ from atlas_utils.vid_utils import vid_to_frames
 from atlas_utils.tools import get_video_filename_from_api
 from atlas_utils.evaluation_framework.report_generation.utils import add_is_valid_values_to_df
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--classes_label_path", type=str)
@@ -432,7 +433,7 @@ class Window(QMainWindow):
                 try:
                     self.predicted_labels = get_predicted_labels_from_api(self.userId, self.videoResultId)
                     self.labels = get_labels_from_api(self.userId, self.videoResultId)
-                    
+
                     self.clearTable()
                     self.insertBaseRowForLabels()
                     self.populateTableWithLabels()
@@ -538,7 +539,6 @@ class Window(QMainWindow):
     def clearTable(self):
         while self.tableWidget.rowCount() > 0:
             self.tableWidget.removeRow(0)
-
 
     def copyRow(self):
         columnCount = self.tableWidget.columnCount()
